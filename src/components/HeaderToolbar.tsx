@@ -55,7 +55,7 @@ export const HeaderToolbar = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-55">
           <DropdownMenuGroup className='space-y-1'>
-            <DropdownMenuItem onClick={() => router.push("/admin/settings")}>
+            <DropdownMenuItem onClick={() => router.push("/settings")}>
               <SettingsIcon className="size-4" />
               Settings
             </DropdownMenuItem>

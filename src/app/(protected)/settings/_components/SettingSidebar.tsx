@@ -73,24 +73,19 @@ const data = {
       icon: IconBuilding,
     },
     {
-      title: "Contact Information",
-      url: "/settings/cms/contact",
-      icon: IconMapPin,
-    },
-    {
-      title: "Policies",
-      url: "/settings/cms/policies",
-      icon: IconScale,
-    },
-    {
       title: "Branding",
       url: "/settings/cms/branding",
       icon: IconMasksTheater,
     },
     {
-      title: "Email",
+      title: "Email Configuration",
       url: "/settings/cms/email",
       icon: IconMail,
+    },
+    {
+      title: "Policies",
+      url: "/settings/cms/policies",
+      icon: IconScale,
     },
     {
       title: "FAQs",
