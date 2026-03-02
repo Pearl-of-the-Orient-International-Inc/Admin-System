@@ -72,7 +72,7 @@ const data = {
     },
     {
       title: "Organizational Structure",
-      url: "/ogranizational-structure",
+      url: "/organizational-structure",
       icon: IconBuildingWarehouse,
     },
     {
