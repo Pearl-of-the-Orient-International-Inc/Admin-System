@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { authStore } from "./auth-store";
 import type { ApiErrorResponse, RefreshTokenResponse } from "./api-types";
 
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NODE_ENV === "development"
     ? process.env.NEXT_PUBLIC_API_BASE_URL_DEV
     : process.env.NEXT_PUBLIC_API_BASE_URL_PROD;

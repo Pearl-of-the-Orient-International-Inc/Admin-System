@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +38,7 @@ export const HeaderToolbar = () => {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const { toast } = useToast();
-  const { data: currentUser } = useCurrentUserQuery();
+  const { data: currentUser, isLoading: isCurrentUserLoading } = useCurrentUserQuery();
   const logoutMutation = useLogoutMutation();
 
   const handleLogout = async () => {
@@ -77,8 +78,14 @@ export const HeaderToolbar = () => {
               width={20}
               height={20}
             />
-            {emailUsername}{" "}
-            <ChevronDownIcon className="size-3.5 text-muted-foreground ml-auto" />
+            {isCurrentUserLoading ? (
+              <Skeleton className="h-4 w-24 rounded-sm" />
+            ) : (
+              <>
+                {emailUsername}{" "}
+                <ChevronDownIcon className="size-3.5 text-muted-foreground ml-auto" />
+              </>
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-55">

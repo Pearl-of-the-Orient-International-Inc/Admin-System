@@ -10,8 +10,10 @@ import type {
   LoginRequest,
   RegisterRequest,
   ForgotPasswordRequest,
+  ChangePasswordRequest,
   ResetPasswordRequest,
   VerifyEmailRequest,
+  VerifyPasswordRequest,
   ResendVerificationRequest,
 } from "./auth.types";
 
@@ -28,8 +30,11 @@ export async function register(payload: RegisterRequest) {
 }
 
 export async function logout() {
-  await api.delete("/auth/logout");
-  authStore.clear();
+  try {
+    await api.delete("/auth/logout");
+  } finally {
+    authStore.clear();
+  }
 }
 
 export async function refreshToken() {
@@ -56,6 +61,14 @@ export async function resendEmailVerification(payload: ResendVerificationRequest
   const { data } = await api.post<AuthSuccessResponse>("/auth/resend-email-verification", payload);
   if (data.accessToken) authStore.setAccessToken(data.accessToken);
   return data;
+}
+
+export async function verifyPassword(payload: VerifyPasswordRequest) {
+  await api.post("/auth/verify-password", payload);
+}
+
+export async function changePassword(payload: ChangePasswordRequest) {
+  await api.post("/auth/change-password", payload);
 }
 
 export async function getCurrentUser() {

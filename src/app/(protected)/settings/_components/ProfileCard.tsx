@@ -1,11 +1,17 @@
 "use client";
 
+import { ChangeEvent, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { IconPhotoPlus } from "@tabler/icons-react";
 import { Input } from "@/components/ui/input";
-import { useCurrentUserQuery } from "@/features/auth/auth.hooks";
+import {
+  toApiError,
+  useCurrentUserQuery,
+  useUploadAvatarMutation,
+} from "@/features/auth/auth.hooks";
+import { useToast } from "@/hooks/use-toast";
 
 const toAvatarUrl = (avatar: string | null | undefined): string | undefined => {
   if (!avatar) return undefined;
@@ -37,10 +43,16 @@ const toAvatarUrl = (avatar: string | null | undefined): string | undefined => {
 };
 
 export const ProfileCard = () => {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { toast } = useToast();
   const { data: currentUser } = useCurrentUserQuery();
+  const uploadAvatarMutation = useUploadAvatarMutation();
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | undefined>(
+    undefined,
+  );
 
   const fullName = currentUser?.name?.trim() || "Unknown User";
-  const avatarUrl = toAvatarUrl(currentUser?.avatar);
+  const avatarUrl = localAvatarUrl ?? toAvatarUrl(currentUser?.avatar);
   const fallbackSeed = currentUser?.name || currentUser?.email || "U";
   const initials = fallbackSeed
     .trim()
@@ -49,11 +61,51 @@ export const ProfileCard = () => {
     .map((part) => part.charAt(0).toUpperCase())
     .join("");
 
+  const handleSelectFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+
+    if (!file) return;
+
+    try {
+      const uploaded = await uploadAvatarMutation.mutateAsync(file);
+      const uploadedUrl = uploaded?.ufsUrl || uploaded?.url;
+
+      if (uploadedUrl) {
+        setLocalAvatarUrl(uploadedUrl);
+      }
+
+      toast({
+        title: "Profile photo updated",
+        description: "Your avatar was uploaded successfully.",
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Upload failed",
+        description: apiError.message ?? "Unable to upload profile image.",
+        variant: "error",
+      });
+    }
+  };
+
   return (
     <div>
       <p>Your profile</p>
       <Card className="bg-transparent mt-4">
         <CardContent>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Avatar className="size-13">
@@ -67,9 +119,16 @@ export const ProfileCard = () => {
                 </p>
               </div>
             </div>
-            <Button size="xs" variant="outline">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={handleSelectFile}
+              disabled={uploadAvatarMutation.isPending}
+            >
               <IconPhotoPlus className="size-3.5" />
-              Upload a new photo
+              {uploadAvatarMutation.isPending
+                ? "Uploading..."
+                : "Upload a new photo"}
             </Button>
           </div>
           <div className="mt-7">

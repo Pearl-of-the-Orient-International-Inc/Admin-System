@@ -1,9 +1,182 @@
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, Key, X, EllipsisIcon, ExternalLink } from "lucide-react";
+import { Mail, Key, X, EyeIcon, EyeOffIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  useChangePasswordMutation,
+  toApiError,
+  useCurrentUserQuery,
+  useResendEmailVerificationMutation,
+  useVerifyPasswordMutation,
+} from "@/features/auth/auth.hooks";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export const LoginCard = () => {
+  const { toast } = useToast();
+  const { data: currentUser } = useCurrentUserQuery();
+  const resendVerificationMutation = useResendEmailVerificationMutation();
+  const verifyPasswordMutation = useVerifyPasswordMutation();
+  const changePasswordMutation = useChangePasswordMutation();
+
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isOldPasswordVerified, setIsOldPasswordVerified] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [isOldPasswordVisible, setIsOldPasswordVisible] = useState(false);
+  const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
+  const [isConfirmNewPasswordVisible, setIsConfirmNewPasswordVisible] =
+    useState(false);
+
+  const email = currentUser?.email ?? "No email available";
+  const isEmailVerified = Boolean(currentUser?.isEmailVerified);
+
+  const handleResendVerification = async () => {
+    if (!currentUser?.email) {
+      toast({
+        title: "Email not available",
+        description: "Cannot send verification because no email was found.",
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      await resendVerificationMutation.mutateAsync({ email: currentUser.email });
+      toast({
+        title: "Verification sent",
+        description: "Please check your inbox for the verification link.",
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Verification failed",
+        description: apiError.message ?? "Unable to resend verification email.",
+        variant: "error",
+      });
+    }
+  };
+
+  const resetChangePasswordState = () => {
+    setIsOldPasswordVerified(false);
+    setOldPassword("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setIsOldPasswordVisible(false);
+    setIsNewPasswordVisible(false);
+    setIsConfirmNewPasswordVisible(false);
+  };
+
+  const handleVerifyOldPassword = async () => {
+    if (!oldPassword.trim()) {
+      toast({
+        title: "Current password required",
+        description: "Please enter your current password first.",
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      await verifyPasswordMutation.mutateAsync({ oldPassword });
+      setIsOldPasswordVerified(true);
+      toast({
+        title: "Password verified",
+        description: "Now enter your new password.",
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Verification failed",
+        description: apiError.message ?? "Current password is incorrect.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!isOldPasswordVerified) {
+      toast({
+        title: "Verify current password",
+        description: "Please verify your current password first.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (!newPassword || !confirmNewPassword) {
+      toast({
+        title: "Password required",
+        description: "Please enter and confirm your new password.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      toast({
+        title: "Passwords do not match",
+        description: "Confirm password must match new password.",
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      await changePasswordMutation.mutateAsync({
+        oldPassword,
+        password: newPassword,
+        confirmPassword: confirmNewPassword,
+      });
+
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully.",
+        variant: "success",
+      });
+
+      setIsChangePasswordOpen(false);
+      resetChangePasswordState();
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Change password failed",
+        description: apiError.message ?? "Unable to update password.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handlePrimaryPasswordAction = async () => {
+    if (!isOldPasswordVerified) {
+      await handleVerifyOldPassword();
+      return;
+    }
+
+    await handleChangePassword();
+  };
+
+  const isPrimaryPasswordPending =
+    !isOldPasswordVerified
+      ? verifyPasswordMutation.isPending
+      : changePasswordMutation.isPending;
+
   return (
     <div>
       <p>Login</p>
@@ -18,18 +191,27 @@ export const LoginCard = () => {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="text-sm">Email</p>
-                  <Badge variant="success">Verified</Badge>
+                  <Badge variant={isEmailVerified ? "success" : "warning"}>
+                    {isEmailVerified ? "Verified" : "Not Verified"}
+                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Your account is currently linked to{" "}
-                  <b className="underline">kylemastercoder14@gmail.com</b>.
+                  <b className="underline">{email}</b>.
                   Update the email used to log into your account.
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="icon-sm">
-              <EllipsisIcon className="size-4" />
-            </Button>
+            {!isEmailVerified && (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleResendVerification}
+                disabled={resendVerificationMutation.isPending}
+              >
+                {resendVerificationMutation.isPending ? "Sending..." : "Verify"}
+              </Button>
+            )}
           </div>
 
           {/* Password Section */}
@@ -45,9 +227,160 @@ export const LoginCard = () => {
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="xs">
-              Edit
-            </Button>
+            <Dialog
+              open={isChangePasswordOpen}
+              onOpenChange={(open) => {
+                setIsChangePasswordOpen(open);
+                if (!open) resetChangePasswordState();
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button variant="outline" size="xs">
+                  Edit
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Change Password</DialogTitle>
+                  <DialogDescription>
+                    Verify your current password before setting a new one.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="oldPassword">Current password</Label>
+                    <div className="relative">
+                      <Input
+                        id="oldPassword"
+                        type={isOldPasswordVisible ? "text" : "password"}
+                        placeholder="Enter current password"
+                        className="pr-9"
+                        value={oldPassword}
+                        onChange={(event) => setOldPassword(event.target.value)}
+                      />
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        size="icon"
+                        onClick={() =>
+                          setIsOldPasswordVisible((prevState) => !prevState)
+                        }
+                        className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
+                      >
+                        {isOldPasswordVisible ? <EyeOffIcon /> : <EyeIcon />}
+                        <span className="sr-only">
+                          {isOldPasswordVisible
+                            ? "Hide current password"
+                            : "Show current password"}
+                        </span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isOldPasswordVerified && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="newPassword">New password</Label>
+                        <div className="relative">
+                          <Input
+                            id="newPassword"
+                            type={isNewPasswordVisible ? "text" : "password"}
+                            placeholder="Enter new password"
+                            className="pr-9"
+                            value={newPassword}
+                            onChange={(event) => setNewPassword(event.target.value)}
+                          />
+                          <Button
+                            variant="ghost"
+                            type="button"
+                            size="icon"
+                            onClick={() =>
+                              setIsNewPasswordVisible((prevState) => !prevState)
+                            }
+                            className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
+                          >
+                            {isNewPasswordVisible ? <EyeOffIcon /> : <EyeIcon />}
+                            <span className="sr-only">
+                              {isNewPasswordVisible
+                                ? "Hide new password"
+                                : "Show new password"}
+                            </span>
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmNewPassword">
+                          Confirm new password
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="confirmNewPassword"
+                            type={
+                              isConfirmNewPasswordVisible ? "text" : "password"
+                            }
+                            placeholder="Confirm new password"
+                            className="pr-9"
+                            value={confirmNewPassword}
+                            onChange={(event) =>
+                              setConfirmNewPassword(event.target.value)
+                            }
+                          />
+                          <Button
+                            variant="ghost"
+                            type="button"
+                            size="icon"
+                            onClick={() =>
+                              setIsConfirmNewPasswordVisible(
+                                (prevState) => !prevState,
+                              )
+                            }
+                            className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
+                          >
+                            {isConfirmNewPasswordVisible ? (
+                              <EyeOffIcon />
+                            ) : (
+                              <EyeIcon />
+                            )}
+                            <span className="sr-only">
+                              {isConfirmNewPasswordVisible
+                                ? "Hide confirm password"
+                                : "Show confirm password"}
+                            </span>
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsChangePasswordOpen(false);
+                      resetChangePasswordState();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handlePrimaryPasswordAction}
+                    disabled={isPrimaryPasswordPending}
+                    size="sm"
+                  >
+                    {isPrimaryPasswordPending
+                      ? isOldPasswordVerified
+                        ? "Updating..."
+                        : "Verifying..."
+                      : isOldPasswordVerified
+                        ? "Update password"
+                        : "Verify current password"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Google Section */}
@@ -86,63 +419,6 @@ export const LoginCard = () => {
             <Button variant="outline" size="xs">
               <X className="size-3.5" />
               Unlink
-            </Button>
-          </div>
-
-          {/* Facebook Section */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4 flex-1">
-              <div className="size-8 rounded-full bg-accent flex items-center justify-center">
-                <svg className="size-4" viewBox="0 0 24 24" fill="#1877F2">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm">Facebook</span>
-                  <span className="px-2 py-0.5 text-xs rounded-full dark:bg-red-500/10 dark:text-red-500 bg-red-700/10 text-red-700">
-                    Not Configured
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Set up a single sign-on with Facebook and login with one
-                  click.
-                </p>
-              </div>
-            </div>
-            <Button variant="outline" size="xs">
-              <ExternalLink className="size-3.5" />
-              Link
-            </Button>
-          </div>
-
-          {/* Microsoft Section */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4 flex-1">
-              <div className="size-8 rounded-full bg-accent flex items-center justify-center">
-                <svg className="size-4" viewBox="0 0 23 23" fill="none">
-                  <path d="M0 0h11v11H0z" fill="#F25022" />
-                  <path d="M12 0h11v11H12z" fill="#7FBA00" />
-                  <path d="M0 12h11v11H0z" fill="#00A4EF" />
-                  <path d="M12 12h11v11H12z" fill="#FFB900" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm">Microsoft</span>
-                  <span className="px-2 py-0.5 text-xs rounded-full dark:bg-red-500/10 dark:text-red-500 bg-red-700/10 text-red-700">
-                    Not Configured
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Set up a single sign-on with Microsoft and login with one
-                  click.
-                </p>
-              </div>
-            </div>
-            <Button variant="outline" size="xs">
-              <ExternalLink className="size-3.5" />
-              Link
             </Button>
           </div>
         </CardContent>
