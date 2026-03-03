@@ -30,10 +30,38 @@ import {
 import { IconBellBolt, IconSearch } from "@tabler/icons-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
+import { useCurrentUserQuery, useLogoutMutation, toApiError } from "@/features/auth/auth.hooks";
+import { useToast } from "@/hooks/use-toast";
 
 export const HeaderToolbar = () => {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const { toast } = useToast();
+  const { data: currentUser } = useCurrentUserQuery();
+  const logoutMutation = useLogoutMutation();
+
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+      toast({
+        title: "Signed out",
+        description: "Your session has been closed.",
+        variant: "info"
+      });
+      router.push("/");
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Sign out failed",
+        description: apiError.message ?? "Unable to sign out right now.",
+        variant: "error",
+      });
+    }
+  };
+
+  const emailUsername =
+    currentUser?.email?.split("@")[0]?.trim() || "account";
+
   return (
     <div className="flex items-center">
       <DropdownMenu>
@@ -49,7 +77,7 @@ export const HeaderToolbar = () => {
               width={20}
               height={20}
             />
-            kylemastercoder14{" "}
+            {emailUsername}{" "}
             <ChevronDownIcon className="size-3.5 text-muted-foreground ml-auto" />
           </Button>
         </DropdownMenuTrigger>
@@ -103,9 +131,9 @@ export const HeaderToolbar = () => {
               <ActivityIcon className="size-4" />
               Activity
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
               <LogOutIcon className="size-4" />
-              Sign out
+              {logoutMutation.isPending ? "Signing out..." : "Sign out"}
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>

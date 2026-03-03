@@ -175,3 +175,145 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .event-blog-content {
+    color: color-mix(in oklch, white 90%, transparent);
+    font-size: 1.06rem;
+    line-height: 1.9;
+  }
+
+  .event-blog-content > * + * {
+    margin-top: 1.1rem;
+  }
+
+  .event-blog-content h2,
+  .event-blog-content h3 {
+    color: white;
+    font-weight: 700;
+    line-height: 1.25;
+    scroll-margin-top: 6rem;
+  }
+
+  .event-blog-content h2 {
+    margin-top: 2.2rem;
+    font-size: 1.95rem;
+  }
+
+  .event-blog-content h3 {
+    margin-top: 1.6rem;
+    font-size: 1.45rem;
+  }
+
+  .event-blog-content p {
+    color: color-mix(in oklch, white 86%, transparent);
+  }
+
+  .event-blog-content a {
+    color: color-mix(in oklch, #7dd3fc 90%, white);
+    text-decoration: underline;
+    text-underline-offset: 0.2rem;
+  }
+
+  .event-blog-content ul,
+  .event-blog-content ol {
+    margin-left: 1.15rem;
+    color: color-mix(in oklch, white 88%, transparent);
+  }
+
+  .event-blog-content ul {
+    list-style: disc;
+  }
+
+  .event-blog-content ol {
+    list-style: decimal;
+  }
+
+  .event-blog-content li + li {
+    margin-top: 0.55rem;
+  }
+
+  .event-blog-content blockquote {
+    border-left: 3px solid color-mix(in oklch, white 30%, transparent);
+    padding-left: 1rem;
+    color: color-mix(in oklch, white 76%, transparent);
+  }
+
+  .event-blog-content img {
+    border: 1px solid color-mix(in oklch, white 20%, transparent);
+    border-radius: 0.75rem;
+    width: 100%;
+    height: auto;
+    margin-top: 1.2rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .event-blog-content hr {
+    border-color: color-mix(in oklch, white 18%, transparent);
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .event-blog-content code {
+    background: color-mix(in oklch, black 35%, transparent);
+    border: 1px solid color-mix(in oklch, white 16%, transparent);
+    border-radius: 0.4rem;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.9em;
+  }
+
+  .event-blog-content pre {
+    background: color-mix(in oklch, black 45%, transparent);
+    border: 1px solid color-mix(in oklch, white 16%, transparent);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+
+  .event-blog-content pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+  }
+
+  .events-calendar .fc {
+    --fc-border-color: var(--border);
+    --fc-page-bg-color: var(--card);
+    --fc-neutral-bg-color: var(--muted);
+    --fc-list-event-hover-bg-color: var(--accent);
+    --fc-button-bg-color: var(--primary);
+    --fc-button-border-color: var(--primary);
+    --fc-button-hover-bg-color: color-mix(in oklch, var(--primary) 90%, black);
+    --fc-button-hover-border-color: color-mix(in oklch, var(--primary) 90%, black);
+    --fc-button-active-bg-color: color-mix(in oklch, var(--primary) 80%, black);
+    --fc-button-active-border-color: color-mix(in oklch, var(--primary) 80%, black);
+    color: var(--foreground);
+  }
+
+  .events-calendar .fc .fc-toolbar-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .events-calendar .fc .fc-button {
+    border-radius: 0.45rem;
+    box-shadow: none;
+  }
+
+  .events-calendar .fc .fc-daygrid-day-number,
+  .events-calendar .fc .fc-col-header-cell-cushion,
+  .events-calendar .fc .fc-list-day-text,
+  .events-calendar .fc .fc-list-day-side-text {
+    color: var(--foreground);
+  }
+
+  .events-calendar .fc .fc-day-today {
+    background: color-mix(in oklch, var(--accent) 35%, transparent) !important;
+  }
+
+  .dark .events-calendar .fc {
+    --fc-page-bg-color: var(--card);
+    --fc-neutral-bg-color: color-mix(in oklch, var(--muted) 50%, transparent);
+    --fc-list-event-hover-bg-color: color-mix(in oklch, var(--accent) 45%, transparent);
+  }
+}

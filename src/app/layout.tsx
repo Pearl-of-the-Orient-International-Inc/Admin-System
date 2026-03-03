@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
+import QueryProvider from "@/components/providers/Query";
 import { GeneralProvider } from '@/components/providers/General';
 import "./globals.css";
 
@@ -37,9 +38,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-         <GeneralProvider>
-          {children}
-         </GeneralProvider>
+        <QueryProvider>
+          <GeneralProvider>
+            {children}
+          </GeneralProvider>
+        </QueryProvider>
       </body>
     </html>
   );
