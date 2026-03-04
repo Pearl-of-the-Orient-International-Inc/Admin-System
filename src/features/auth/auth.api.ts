@@ -5,6 +5,7 @@ import type {
   PasskeyOptionsResponse,
   PasskeyStatusResponse,
   RefreshTokenResponse,
+  UserSessionsResponse,
   TwoFactorSetupResponse,
   UserEnvelopeResponse,
   VerifyEmailResponse,
@@ -160,4 +161,17 @@ export async function verifyPasskeyAuthentication(
   }
 
   return data;
+}
+
+export async function getUserSessions() {
+  const { data } = await api.get<UserSessionsResponse>("/users/sessions");
+  return data.data;
+}
+
+export async function revokeSession(sessionId: string) {
+  await api.delete(`/users/sessions/${encodeURIComponent(sessionId)}`);
+}
+
+export async function revokeOtherSessions() {
+  await api.delete("/users/sessions/others");
 }

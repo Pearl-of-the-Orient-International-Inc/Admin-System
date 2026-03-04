@@ -37,10 +37,18 @@ const getMapUrl = (coordinates?: { lat: number; lng: number }) => {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.1},${lat - 0.1},${lng + 0.1},${lat + 0.1}&layer=mapnik&marker=${lat},${lng}`;
 };
 
+const getOpenStreetMapSearchUrl = (location: string) => {
+  if (!location || location.toLowerCase() === "local network") return null;
+  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(location)}`;
+};
+
 export const SessionDetailsDialog = ({
   session,
   onOpenChange,
 }: SessionDetailsDialogProps) => {
+  const mapUrl = getMapUrl(session.coordinates);
+  const mapSearchUrl = getOpenStreetMapSearchUrl(session.location);
+
   return (
     <Dialog onOpenChange={() => onOpenChange?.(session)}>
       <DialogTrigger asChild>
@@ -98,10 +106,10 @@ export const SessionDetailsDialog = ({
           </div>
 
           {/* Map */}
-          {session.coordinates && (
+          {mapUrl ? (
             <div className="rounded-lg overflow-hidden border">
               <iframe
-                src={getMapUrl(session.coordinates) || ""}
+                src={mapUrl}
                 width="100%"
                 height="256"
                 style={{ border: 0 }}
@@ -109,6 +117,23 @@ export const SessionDetailsDialog = ({
                 title="Session location map"
                 className="w-full"
               />
+            </div>
+          ) : (
+            <div className="rounded-lg border p-3 text-sm text-muted-foreground space-y-2">
+              <p>
+                Map preview is unavailable for this session location (e.g. local/private IP).
+              </p>
+              {mapSearchUrl && (
+                <a
+                  href={mapSearchUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-primary underline underline-offset-4"
+                >
+                  Open in OpenStreetMap
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              )}
             </div>
           )}
         </div>

@@ -189,4 +189,37 @@ export const usePasskeyAuthenticationVerifyMutation = () =>
     meta: { feature: "auth.passkey.authenticationVerify" },
   });
 
+export const useUserSessionsQuery = () =>
+  useQuery({
+    queryKey: ["auth", "sessions"],
+    queryFn: authApi.getUserSessions,
+    staleTime: 30_000,
+  });
+
+export const useRevokeSessionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: authApi.revokeSession,
+    throwOnError: false,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] });
+    },
+    meta: { feature: "auth.revokeSession" },
+  });
+};
+
+export const useRevokeOtherSessionsMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: authApi.revokeOtherSessions,
+    throwOnError: false,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] });
+    },
+    meta: { feature: "auth.revokeOtherSessions" },
+  });
+};
+
 export { toApiError };

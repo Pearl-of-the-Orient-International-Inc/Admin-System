@@ -65,6 +65,34 @@ export interface PasskeyOptionsResponse<TOptions = unknown> {
   };
 }
 
+export interface UserSession {
+  id: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  expiredAt: string;
+  isCurrent: boolean;
+  location: {
+    city: string | null;
+    region: string | null;
+    country: string | null;
+    label: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    } | null;
+  };
+}
+
+export interface UserSessionsResponse {
+  code: string;
+  message: string;
+  data: {
+    currentSession: UserSession | null;
+    sessions: UserSession[];
+  };
+}
+
 export interface AuthSuccessResponse {
   code: string;
   message: string;

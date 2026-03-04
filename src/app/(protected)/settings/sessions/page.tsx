@@ -1,83 +1,100 @@
 "use client";
 
 import { Heading } from "@/components/Heading";
-import { useState, useMemo } from "react";
-import { CurrentSessionCard } from './_components/CurrentSessionCard';
-import { ActiveSessionsCard } from './_components/ActiveSessionCard';
-import { Session, SessionInfo } from '@/types/session';
+import { useMemo, useState } from "react";
+import { CurrentSessionCard } from "./_components/CurrentSessionCard";
+import { ActiveSessionsCard } from "./_components/ActiveSessionCard";
+import { BackendSession, Session, SessionInfo } from "@/types/session";
+import {
+  toApiError,
+  useRevokeOtherSessionsMutation,
+  useRevokeSessionMutation,
+  useUserSessionsQuery,
+} from "@/features/auth/auth.hooks";
+import { useToast } from "@/hooks/use-toast";
 
 const Page = () => {
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const { toast } = useToast();
+  const [, setSelectedSession] = useState<Session | null>(null);
+  const sessionsQuery = useUserSessionsQuery();
+  const revokeSessionMutation = useRevokeSessionMutation();
+  const revokeOtherSessionsMutation = useRevokeOtherSessionsMutation();
 
-  const now = new Date();
-  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const tenDaysFromNow = new Date(now.getTime() + 248 * 60 * 60 * 1000)
+  const mapBackendSessionToUI = (session: BackendSession): Session => {
+    const userAgent = session.userAgent ?? "Unknown Device";
+    const [browserName = "Unknown Browser", ...deviceParts] =
+      userAgent.split(" on ");
 
-  const session: SessionInfo = {
-    id: "23",
-    ipAddress: "123.253.50.156",
-    createdAt: oneDayAgo.toISOString(),
-    expiredAt: tenDaysFromNow.toISOString()
-  }
-
-  // Calculate dates once using useMemo to avoid impure function calls during render
-  const mockSessionDates = useMemo(() => {
-    const now = new Date();
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const deviceName =
+      deviceParts.length > 0 ? deviceParts.join(" on ") : "Unknown Device";
 
     return {
-      now: now.toISOString(),
-      twoHoursAgo: twoHoursAgo.toISOString(),
-      oneDayAgo: oneDayAgo.toISOString(),
+      id: session.id,
+      device: deviceName,
+      browser: browserName,
+      location: session.location.label,
+      ipAddress: session.ipAddress ?? "Unknown IP",
+      lastActive: session.createdAt,
+      createdAt: session.createdAt,
+      expiredAt: session.expiredAt,
+      signedIn: new Date(session.createdAt).toLocaleString(),
+      isCurrent: session.isCurrent,
+      coordinates: session.location.coordinates ?? undefined,
     };
-  }, []); // Empty dependency array means this only runs once
-
-  // Mock sessions data - replace with actual API call
-  const [sessions, setSessions] = useState<Session[]>([
-    {
-      id: "1",
-      device: "Windows PC",
-      browser: "Chrome on Windows",
-      location: "Dasmariñas, Calabarzon, Philippines",
-      ipAddress: "123.253.50.156",
-      lastActive: mockSessionDates.now,
-      signedIn: "January 13, 2026",
-      isCurrent: true,
-      coordinates: { lat: 14.3294, lng: 120.9367 },
-    },
-    {
-      id: "2",
-      device: "iPhone 15 Pro",
-      browser: "Safari 17",
-      location: "Manila, Metro Manila, Philippines",
-      ipAddress: "192.168.1.2",
-      lastActive: mockSessionDates.twoHoursAgo,
-      signedIn: "January 12, 2026",
-      isCurrent: false,
-      coordinates: { lat: 14.5995, lng: 120.9842 },
-    },
-    {
-      id: "3",
-      device: "iPad Air",
-      browser: "Safari 17",
-      location: "Quezon City, Metro Manila, Philippines",
-      ipAddress: "192.168.1.3",
-      lastActive: mockSessionDates.oneDayAgo,
-      signedIn: "January 10, 2026",
-      isCurrent: false,
-      coordinates: { lat: 14.6760, lng: 121.0437 },
-    },
-  ]);
-
-  const handleRevokeSession = (sessionId: string) => {
-    setSessions(sessions.filter((s) => s.id !== sessionId));
-    // TODO: Add actual API call to revoke session
   };
 
-  const handleRevokeAllOtherSessions = () => {
-    setSessions(sessions.filter((s) => s.isCurrent));
-    // TODO: Add actual API call to revoke all other sessions
+  const session: SessionInfo = useMemo(() => {
+    const currentSession = sessionsQuery.data?.currentSession;
+
+    if (!currentSession) return {};
+
+    return {
+      id: currentSession.id,
+      ipAddress: currentSession.ipAddress ?? "Unknown IP",
+      createdAt: currentSession.createdAt,
+      expiredAt: currentSession.expiredAt,
+    };
+  }, [sessionsQuery.data?.currentSession]);
+
+  const sessions: Session[] = useMemo(
+    () => (sessionsQuery.data?.sessions ?? []).map(mapBackendSessionToUI),
+    [sessionsQuery.data?.sessions],
+  );
+
+  const handleRevokeSession = async (sessionId: string) => {
+    try {
+      await revokeSessionMutation.mutateAsync(sessionId);
+      toast({
+        title: "Session revoked",
+        description: "The selected device has been signed out.",
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Failed to revoke session",
+        description: apiError.message ?? "Unable to revoke session right now.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleRevokeAllOtherSessions = async () => {
+    try {
+      await revokeOtherSessionsMutation.mutateAsync();
+      toast({
+        title: "Other sessions revoked",
+        description: "All sessions except your current one were signed out.",
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Failed to revoke other sessions",
+        description: apiError.message ?? "Unable to complete this action right now.",
+        variant: "error",
+      });
+    }
   };
 
   return (
