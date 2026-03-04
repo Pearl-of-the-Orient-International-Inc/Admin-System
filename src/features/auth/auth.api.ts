@@ -37,7 +37,9 @@ export async function login(payload: LoginRequest) {
 
 export async function register(payload: RegisterRequest) {
   const { data } = await api.post<AuthSuccessResponse>("/auth/register", payload);
-  authStore.setAccessToken(data.accessToken);
+  if (data.accessToken) {
+    authStore.setAccessToken(data.accessToken);
+  }
   return data;
 }
 

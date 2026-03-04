@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { Suspense } from "react";
 import { ResetPasswordForm } from "@/components/forms/ResetPasswordForm";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,7 +23,9 @@ const Page = () => {
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-md">
-            <ResetPasswordForm />
+            <Suspense fallback={null}>
+              <ResetPasswordForm />
+            </Suspense>
           </div>
         </div>
       </div>
