@@ -2,7 +2,10 @@ import { api } from "@/lib/http-client";
 import { authStore } from "@/lib/auth-store";
 import type {
   AuthSuccessResponse,
+  PasskeyOptionsResponse,
+  PasskeyStatusResponse,
   RefreshTokenResponse,
+  TwoFactorSetupResponse,
   UserEnvelopeResponse,
   VerifyEmailResponse,
 } from "@/lib/api-types";
@@ -15,11 +18,19 @@ import type {
   VerifyEmailRequest,
   VerifyPasswordRequest,
   ResendVerificationRequest,
+  EnableTwoFactorRequest,
+  VerifyTwoFactorRequest,
+  PasskeyRegistrationOptionsRequest,
+  PasskeyAuthenticationOptionsRequest,
+  PasskeyRegistrationVerifyRequest,
+  PasskeyAuthenticationVerifyRequest,
 } from "./auth.types";
 
 export async function login(payload: LoginRequest) {
   const { data } = await api.post<AuthSuccessResponse>("/auth/login", payload);
-  authStore.setAccessToken(data.accessToken);
+  if (data.accessToken && !data.mfaRequired) {
+    authStore.setAccessToken(data.accessToken);
+  }
   return data;
 }
 
@@ -74,4 +85,79 @@ export async function changePassword(payload: ChangePasswordRequest) {
 export async function getCurrentUser() {
   const { data } = await api.get<UserEnvelopeResponse>("/users/current");
   return data.user;
+}
+
+export async function setupTwoFactor() {
+  const { data } = await api.post<TwoFactorSetupResponse>("/auth/two-factor/setup");
+  return data;
+}
+
+export async function enableTwoFactor(payload: EnableTwoFactorRequest) {
+  await api.post("/auth/two-factor/enable", payload);
+}
+
+export async function disableTwoFactor() {
+  await api.post("/auth/two-factor/disable");
+}
+
+export async function verifyTwoFactor(payload: VerifyTwoFactorRequest) {
+  const { data } = await api.post<AuthSuccessResponse>("/auth/verify-two-factor", payload);
+  if (data.accessToken) {
+    authStore.setAccessToken(data.accessToken);
+  }
+  return data;
+}
+
+export async function deleteCurrentUser() {
+  try {
+    await api.delete("/users/current");
+  } finally {
+    authStore.clear();
+  }
+}
+
+export async function getPasskeyStatus() {
+  const { data } = await api.get<PasskeyStatusResponse>("/auth/passkey/status");
+  return data.data;
+}
+
+export async function getPasskeyRegistrationOptions(
+  payload: PasskeyRegistrationOptionsRequest = {},
+) {
+  const { data } = await api.post<PasskeyOptionsResponse>(
+    "/auth/passkey/register/options",
+    payload,
+  );
+  return data.data;
+}
+
+export async function verifyPasskeyRegistration(
+  payload: PasskeyRegistrationVerifyRequest,
+) {
+  await api.post("/auth/passkey/register/verify", payload);
+}
+
+export async function getPasskeyAuthenticationOptions(
+  payload: PasskeyAuthenticationOptionsRequest,
+) {
+  const { data } = await api.post<PasskeyOptionsResponse>(
+    "/auth/passkey/authenticate/options",
+    payload,
+  );
+  return data.data;
+}
+
+export async function verifyPasskeyAuthentication(
+  payload: PasskeyAuthenticationVerifyRequest,
+) {
+  const { data } = await api.post<AuthSuccessResponse>(
+    "/auth/passkey/authenticate/verify",
+    payload,
+  );
+
+  if (data.accessToken) {
+    authStore.setAccessToken(data.accessToken);
+  }
+
+  return data;
 }

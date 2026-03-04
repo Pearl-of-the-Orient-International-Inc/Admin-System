@@ -18,11 +18,19 @@ export const useRegisterMutation = () =>
   });
 
 export const useLogoutMutation = () =>
-  useMutation({
-    mutationFn: authApi.logout,
-    throwOnError: false,
-    meta: { feature: "auth.logout" },
-  });
+  {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: authApi.logout,
+      throwOnError: false,
+      onSettled: async () => {
+        await queryClient.cancelQueries({ queryKey: ["auth"] });
+        queryClient.removeQueries({ queryKey: ["auth"] });
+      },
+      meta: { feature: "auth.logout" },
+    });
+  };
 
 export const useForgotPasswordMutation = () =>
   useMutation({
@@ -84,5 +92,101 @@ export const useUploadAvatarMutation = () => {
     meta: { feature: "auth.uploadAvatar" },
   });
 };
+
+export const useSetupTwoFactorMutation = () =>
+  useMutation({
+    mutationFn: authApi.setupTwoFactor,
+    throwOnError: false,
+    meta: { feature: "auth.setupTwoFactor" },
+  });
+
+export const useEnableTwoFactorMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: authApi.enableTwoFactor,
+    throwOnError: false,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["auth", "current-user"] });
+    },
+    meta: { feature: "auth.enableTwoFactor" },
+  });
+};
+
+export const useDisableTwoFactorMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: authApi.disableTwoFactor,
+    throwOnError: false,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["auth", "current-user"] });
+    },
+    meta: { feature: "auth.disableTwoFactor" },
+  });
+};
+
+export const useVerifyTwoFactorMutation = () =>
+  useMutation({
+    mutationFn: authApi.verifyTwoFactor,
+    throwOnError: false,
+    meta: { feature: "auth.verifyTwoFactor" },
+  });
+
+export const useDeleteCurrentUserMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: authApi.deleteCurrentUser,
+    throwOnError: false,
+    onSettled: async () => {
+      await queryClient.cancelQueries({ queryKey: ["auth"] });
+      queryClient.removeQueries({ queryKey: ["auth"] });
+    },
+    meta: { feature: "auth.deleteCurrentUser" },
+  });
+};
+
+export const usePasskeyStatusQuery = () =>
+  useQuery({
+    queryKey: ["auth", "passkey-status"],
+    queryFn: authApi.getPasskeyStatus,
+    staleTime: 60_000,
+  });
+
+export const usePasskeyRegistrationOptionsMutation = () =>
+  useMutation({
+    mutationFn: authApi.getPasskeyRegistrationOptions,
+    throwOnError: false,
+    meta: { feature: "auth.passkey.registrationOptions" },
+  });
+
+export const usePasskeyRegistrationVerifyMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: authApi.verifyPasskeyRegistration,
+    throwOnError: false,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["auth", "passkey-status"] });
+      await queryClient.invalidateQueries({ queryKey: ["auth", "current-user"] });
+    },
+    meta: { feature: "auth.passkey.registrationVerify" },
+  });
+};
+
+export const usePasskeyAuthenticationOptionsMutation = () =>
+  useMutation({
+    mutationFn: authApi.getPasskeyAuthenticationOptions,
+    throwOnError: false,
+    meta: { feature: "auth.passkey.authenticationOptions" },
+  });
+
+export const usePasskeyAuthenticationVerifyMutation = () =>
+  useMutation({
+    mutationFn: authApi.verifyPasskeyAuthentication,
+    throwOnError: false,
+    meta: { feature: "auth.passkey.authenticationVerify" },
+  });
 
 export { toApiError };

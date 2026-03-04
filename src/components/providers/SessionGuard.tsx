@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ export function SessionGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
   const hasTriggeredRef = useRef(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const logoutMutation = useLogoutMutation();
   const { isError, error } = useCurrentUserQuery();
 
@@ -21,6 +22,7 @@ export function SessionGuard({ children }: { children: ReactNode }) {
     if (status !== 401 && status !== 403) return;
 
     hasTriggeredRef.current = true;
+    setIsRedirecting(true);
 
     toast({
       title: "Session expired",
@@ -28,7 +30,7 @@ export function SessionGuard({ children }: { children: ReactNode }) {
       variant: "error",
     });
 
-    const timeout = setTimeout(async () => {
+    void (async () => {
       try {
         await logoutMutation.mutateAsync();
       } catch {
@@ -36,10 +38,10 @@ export function SessionGuard({ children }: { children: ReactNode }) {
       } finally {
         router.replace("/");
       }
-    }, 900);
-
-    return () => clearTimeout(timeout);
+    })();
   }, [error, isError, logoutMutation, router, toast]);
+
+  if (isRedirecting) return null;
 
   return <>{children}</>;
 }

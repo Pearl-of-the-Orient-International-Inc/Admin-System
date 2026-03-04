@@ -3,6 +3,7 @@ import { LoginCard } from './_components/LoginCard';
 import { PreferenceCard } from './_components/PreferenceCard';
 import { ProfileCard } from "./_components/ProfileCard";
 import { AccountActionCard } from './_components/AccountActionCard';
+import { PasskeyCard } from './_components/PasskeyCard';
 import { Heading } from "@/components/Heading";
 
 const Page = () => {
@@ -17,6 +18,7 @@ const Page = () => {
         <ProfileCard />
         <LoginCard />
         <MFACard />
+        <PasskeyCard />
         <PreferenceCard />
         <AccountActionCard />
       </div>

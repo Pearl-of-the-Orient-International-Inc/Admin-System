@@ -32,14 +32,46 @@ export interface UserPublic {
   createdAt: string;
   updatedAt?: string;
   isEmailVerified?: boolean;
+  isTwoFactorEnabled?: boolean;
+}
+
+export interface TwoFactorSetupData {
+  secret: string;
+  otpauthUrl: string;
+  qrCodeDataUrl: string;
+}
+
+export interface TwoFactorSetupResponse {
+  code: string;
+  message: string;
+  data: TwoFactorSetupData;
+}
+
+export interface PasskeyStatusResponse {
+  code: string;
+  message: string;
+  data: {
+    hasPasskey: boolean;
+    count: number;
+  };
+}
+
+export interface PasskeyOptionsResponse<TOptions = unknown> {
+  code: string;
+  message: string;
+  data: {
+    options: TOptions;
+    label?: string | null;
+  };
 }
 
 export interface AuthSuccessResponse {
   code: string;
   message: string;
   user: UserPublic;
-  accessToken: string;
+  accessToken?: string;
   mfaRequired?: boolean;
+  mfaToken?: string;
 }
 
 export interface RefreshTokenResponse {

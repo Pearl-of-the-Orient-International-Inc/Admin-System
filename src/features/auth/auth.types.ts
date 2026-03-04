@@ -40,3 +40,31 @@ export interface ChangePasswordRequest {
   password: string;
   confirmPassword: string;
 }
+
+export interface EnableTwoFactorRequest {
+  token: string;
+}
+
+export interface VerifyTwoFactorRequest {
+  mfaToken: string;
+  token: string;
+  userAgent?: string;
+}
+
+export interface PasskeyRegistrationOptionsRequest {
+  label?: string;
+}
+
+export interface PasskeyAuthenticationOptionsRequest {
+  email: string;
+}
+
+export interface PasskeyRegistrationVerifyRequest {
+  response: unknown;
+}
+
+export interface PasskeyAuthenticationVerifyRequest {
+  email: string;
+  response: unknown;
+  userAgent?: string;
+}

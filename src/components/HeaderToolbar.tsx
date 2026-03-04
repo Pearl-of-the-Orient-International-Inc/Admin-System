@@ -49,7 +49,7 @@ export const HeaderToolbar = () => {
         description: "Your session has been closed.",
         variant: "info"
       });
-      router.push("/");
+      router.replace("/");
     } catch (error: unknown) {
       const apiError = toApiError(error);
       toast({
