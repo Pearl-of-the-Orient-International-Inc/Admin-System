@@ -157,7 +157,9 @@ export function LoginForm({
     }
 
     try {
-      const optionsPayload = await passkeyOptionsMutation.mutateAsync({ email });
+      const optionsPayload = await passkeyOptionsMutation.mutateAsync({
+        email,
+      });
 
       const credential = await startAuthentication({
         optionsJSON: optionsPayload.options as Parameters<
@@ -196,6 +198,7 @@ export function LoginForm({
       className={cn("flex flex-col gap-10", className)}
       {...props}
       onSubmit={requiresMfa ? handleVerifyTwoFactor : handleSubmit}
+      autoFocus
     >
       <FieldGroup>
         <div className="flex flex-col gap-1">
@@ -269,11 +272,13 @@ export function LoginForm({
                 type="button"
                 onClick={handlePasskeyLogin}
                 disabled={
-                  passkeyOptionsMutation.isPending || passkeyVerifyMutation.isPending
+                  passkeyOptionsMutation.isPending ||
+                  passkeyVerifyMutation.isPending
                 }
               >
                 <GoPasskeyFill className="size-4" />
-                {passkeyOptionsMutation.isPending || passkeyVerifyMutation.isPending
+                {passkeyOptionsMutation.isPending ||
+                passkeyVerifyMutation.isPending
                   ? "Processing..."
                   : "Login with Passkey"}
               </Button>
@@ -297,6 +302,7 @@ export function LoginForm({
             <Field className="space-y-3">
               <FieldLabel htmlFor="otp">Authentication code</FieldLabel>
               <InputOTP
+                autoFocus
                 id="otp"
                 maxLength={6}
                 value={otpCode}
