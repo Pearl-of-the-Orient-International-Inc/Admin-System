@@ -8,7 +8,7 @@ import { Heading } from "@/components/Heading";
 
 const Page = () => {
   return (
-    <div>
+    <div className='p-10'>
       <Heading
         title="Account Settings"
         description="Manage your profile, preferences, and account settings."

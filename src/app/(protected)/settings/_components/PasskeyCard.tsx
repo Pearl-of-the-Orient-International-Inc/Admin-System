@@ -23,11 +23,13 @@ import {
   usePasskeyRegistrationVerifyMutation,
   usePasskeyStatusQuery,
 } from "@/features/auth/auth.hooks";
+import { SettingsCardSkeleton } from "./SettingsCardSkeleton";
 
 export const PasskeyCard = () => {
   const { toast } = useToast();
-  const { data: currentUser } = useCurrentUserQuery();
-  const { data: passkeyStatus } = usePasskeyStatusQuery();
+  const { data: currentUser, isLoading: isCurrentUserLoading } = useCurrentUserQuery();
+  const { data: passkeyStatus, isLoading: isPasskeyStatusLoading } =
+    usePasskeyStatusQuery();
   const registrationOptionsMutation = usePasskeyRegistrationOptionsMutation();
   const registrationVerifyMutation = usePasskeyRegistrationVerifyMutation();
 
@@ -35,6 +37,10 @@ export const PasskeyCard = () => {
   const isCreating =
     registrationOptionsMutation.isPending || registrationVerifyMutation.isPending;
   const isPasskeyConfigured = Boolean(passkeyStatus?.hasPasskey);
+
+  if (isCurrentUserLoading || isPasskeyStatusLoading) {
+    return <SettingsCardSkeleton title="Passkey" lines={1} />;
+  }
 
   const handleCreatePasskey = async () => {
     if (!currentUser?.id || !currentUser?.email) {

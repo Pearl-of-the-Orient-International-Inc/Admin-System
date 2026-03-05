@@ -5,7 +5,7 @@ import { OfficeHoursCard } from "./_components/OfficeHoursCard";
 
 const Page = () => {
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Office hours"
         description="Define when your office is open so people know when to reach you."

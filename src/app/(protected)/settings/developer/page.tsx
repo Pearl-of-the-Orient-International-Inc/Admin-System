@@ -7,7 +7,7 @@ import { DeveloperWebhooksCard } from "./_components/DeveloperWebhooksCard";
 
 const Page = () => {
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Developer"
         description="API keys, personal access tokens, and webhooks for integrating your platform with external apps and scripts."

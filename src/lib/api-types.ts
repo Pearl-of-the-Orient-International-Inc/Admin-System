@@ -1,4 +1,4 @@
-import { UserType } from "@/enums";
+import { UserAccountStatus, UserPosition, UserType } from "@/enums";
 
 export type ApiCode =
   | "OK"
@@ -29,6 +29,8 @@ export interface UserPublic {
   email: string;
   avatar: string | null;
   role: UserType;
+  position?: UserPosition | null;
+  accountStatus?: UserAccountStatus;
   createdAt: string;
   updatedAt?: string;
   isEmailVerified?: boolean;
@@ -113,5 +115,21 @@ export interface VerifyEmailResponse {
 }
 
 export interface UserEnvelopeResponse {
+  user: UserPublic;
+}
+
+export interface UserListResponse {
+  total: number;
+  users: UserPublic[];
+  limit?: number;
+  offset?: number;
+  totalPages?: number;
+  currentPage?: number;
+  hasMore?: boolean;
+}
+
+export interface CreateUserAccountResponse {
+  code: ApiCode;
+  message: string;
   user: UserPublic;
 }

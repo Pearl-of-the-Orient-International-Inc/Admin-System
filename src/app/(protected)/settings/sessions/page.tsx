@@ -4,6 +4,10 @@ import { Heading } from "@/components/Heading";
 import { useMemo, useState } from "react";
 import { CurrentSessionCard } from "./_components/CurrentSessionCard";
 import { ActiveSessionsCard } from "./_components/ActiveSessionCard";
+import {
+  ActiveSessionsCardSkeleton,
+  CurrentSessionCardSkeleton,
+} from "./_components/SessionsSkeleton";
 import { BackendSession, Session, SessionInfo } from "@/types/session";
 import {
   toApiError,
@@ -60,6 +64,7 @@ const Page = () => {
     () => (sessionsQuery.data?.sessions ?? []).map(mapBackendSessionToUI),
     [sessionsQuery.data?.sessions],
   );
+  const isLoadingSessions = sessionsQuery.isLoading && !sessionsQuery.data;
 
   const handleRevokeSession = async (sessionId: string) => {
     try {
@@ -98,21 +103,29 @@ const Page = () => {
   };
 
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Session Settings"
         description="Monitor and manage your active sessions across all devices."
       />
 
       <div className="space-y-10 mt-10">
-        <CurrentSessionCard session={session} />
-
-        <ActiveSessionsCard
-          sessions={sessions}
-          onRevokeSession={handleRevokeSession}
-          onRevokeAllOthers={handleRevokeAllOtherSessions}
-          onSelectSession={setSelectedSession}
-        />
+        {isLoadingSessions ? (
+          <>
+            <CurrentSessionCardSkeleton />
+            <ActiveSessionsCardSkeleton />
+          </>
+        ) : (
+          <>
+            <CurrentSessionCard session={session} />
+            <ActiveSessionsCard
+              sessions={sessions}
+              onRevokeSession={handleRevokeSession}
+              onRevokeAllOthers={handleRevokeAllOtherSessions}
+              onSelectSession={setSelectedSession}
+            />
+          </>
+        )}
       </div>
     </div>
   );

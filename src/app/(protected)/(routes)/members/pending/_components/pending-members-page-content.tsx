@@ -70,7 +70,7 @@ export function PendingMembersPageContent() {
   };
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 p-10">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           Pending Applications

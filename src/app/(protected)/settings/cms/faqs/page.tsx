@@ -3,7 +3,7 @@ import { FaqsCard } from "./_components/FaqsCard";
 
 const Page = () => {
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Frequently asked questions"
         description="Create and manage FAQs for members, ministry workers, seminarians, and chaplaincy staff."

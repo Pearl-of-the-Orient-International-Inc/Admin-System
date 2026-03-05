@@ -13,7 +13,7 @@ const Page = () => {
   const [appPassword, setAppPassword] = useState("");
 
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Email settings"
         description="Configure SMTP for sending transactional and system emails."

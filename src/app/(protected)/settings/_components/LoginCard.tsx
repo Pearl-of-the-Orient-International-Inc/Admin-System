@@ -24,10 +24,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SettingsCardSkeleton } from "./SettingsCardSkeleton";
 
 export const LoginCard = () => {
   const { toast } = useToast();
-  const { data: currentUser } = useCurrentUserQuery();
+  const { data: currentUser, isLoading } = useCurrentUserQuery();
   const resendVerificationMutation = useResendEmailVerificationMutation();
   const verifyPasswordMutation = useVerifyPasswordMutation();
   const changePasswordMutation = useChangePasswordMutation();
@@ -176,6 +177,10 @@ export const LoginCard = () => {
     !isOldPasswordVerified
       ? verifyPasswordMutation.isPending
       : changePasswordMutation.isPending;
+
+  if (isLoading) {
+    return <SettingsCardSkeleton title="Login" lines={3} />;
+  }
 
   return (
     <div>

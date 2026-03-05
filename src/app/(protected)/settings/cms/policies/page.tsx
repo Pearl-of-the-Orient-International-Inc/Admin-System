@@ -5,7 +5,7 @@ import { PoliciesCard } from "./_components/PoliciesCard";
 
 const Page = () => {
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Policies"
         description="Manage legal, ministry, and governance policies for your seminary, worship, and chaplaincy organization."

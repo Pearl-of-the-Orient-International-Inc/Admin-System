@@ -32,7 +32,7 @@ const Page = () => {
   } = useAddressData(region, province, municipality);
 
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Platform Settings"
         description="Manage your organization information, contact details, address, mission, vision, and objectives."

@@ -58,7 +58,7 @@ export default function RestrictedUsersPage() {
   };
 
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Restricted users"
         description="Restrict users to deny access to ministry records, seminary tools, worship administration, and other platform features in this workspace."

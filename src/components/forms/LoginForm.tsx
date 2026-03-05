@@ -198,7 +198,6 @@ export function LoginForm({
       className={cn("flex flex-col gap-10", className)}
       {...props}
       onSubmit={requiresMfa ? handleVerifyTwoFactor : handleSubmit}
-      autoFocus
     >
       <FieldGroup>
         <div className="flex flex-col gap-1">

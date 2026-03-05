@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,10 +29,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { SettingsCardSkeleton } from "./SettingsCardSkeleton";
 
 export const MFACard = () => {
   const { toast } = useToast();
-  const { data: currentUser } = useCurrentUserQuery();
+  const { data: currentUser, isLoading } = useCurrentUserQuery();
   const setupMutation = useSetupTwoFactorMutation();
   const enableMutation = useEnableTwoFactorMutation();
   const disableMutation = useDisableTwoFactorMutation();
@@ -43,14 +44,9 @@ export const MFACard = () => {
 
   const isEnabled = Boolean(currentUser?.isTwoFactorEnabled);
   const setupData = setupMutation.data?.data;
-
-  const dialogDescription = useMemo(() => {
-    if (isEnabled) {
-      return "Two-step authentication is currently enabled for this account.";
-    }
-
-    return "Scan the QR code with your authenticator app, then enter the 6-digit code to turn it on.";
-  }, [isEnabled]);
+  const dialogDescription = isEnabled
+    ? "Two-step authentication is currently enabled for this account."
+    : "Scan the QR code with your authenticator app, then enter the 6-digit code to turn it on.";
 
   useEffect(() => {
     const initializeSetup = async () => {
@@ -130,6 +126,10 @@ export const MFACard = () => {
       });
     }
   };
+
+  if (isLoading) {
+    return <SettingsCardSkeleton title="Two-step authentication" lines={1} />;
+  }
 
   return (
     <div>

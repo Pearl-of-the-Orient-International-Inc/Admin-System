@@ -11,9 +11,7 @@ import {
   IconHelpCircle,
   IconLockAccess,
   IconMail,
-  IconMapPin,
   IconMasksTheater,
-  IconMessage2Cog,
   IconScale,
   IconSettings,
 } from "@tabler/icons-react";
@@ -102,11 +100,6 @@ const data = {
       url: "/settings/cms/restricted-users",
       icon: IconBan,
       isNew: true,
-    },
-    {
-      title: "Chat Configuration",
-      url: "/settings/cms/chat-configuration",
-      icon: IconMessage2Cog,
     },
   ],
 };

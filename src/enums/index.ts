@@ -4,6 +4,21 @@ export enum UserType {
   ADMIN = "ADMIN",
 }
 
+export enum UserPosition {
+  CLERK = "CLERK",
+  HR = "HR",
+  IT = "IT",
+  ACCOUNTING_FINANCE = "ACCOUNTING_FINANCE",
+  OPERATIONS = "OPERATIONS",
+  SECRETARIAT = "SECRETARIAT",
+}
+
+export enum UserAccountStatus {
+  ACTIVE = "ACTIVE",
+  PENDING = "PENDING",
+  SUSPENDED = "SUSPENDED",
+}
+
 export enum MemberStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",

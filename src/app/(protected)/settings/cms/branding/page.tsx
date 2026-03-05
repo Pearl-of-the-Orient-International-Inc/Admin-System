@@ -294,7 +294,7 @@ const Page = () => {
   }, []);
 
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Branding"
         description="Manage visual identity assets including logos, homepage hero carousel images, and theme color tokens."

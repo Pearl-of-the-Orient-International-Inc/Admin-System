@@ -9,7 +9,7 @@ import { BackupConfigCard } from "./_components/BackupConfigCard";
 
 const Page = () => {
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Security & Privacy"
         description="Manage IP visibility, blocking rules, sensitive data policies, audit logs, and database backups for your workspace."

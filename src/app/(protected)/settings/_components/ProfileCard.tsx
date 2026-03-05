@@ -12,6 +12,7 @@ import {
   useUploadAvatarMutation,
 } from "@/features/auth/auth.hooks";
 import { useToast } from "@/hooks/use-toast";
+import { SettingsCardSkeleton } from "./SettingsCardSkeleton";
 
 const toAvatarUrl = (avatar: string | null | undefined): string | undefined => {
   if (!avatar) return undefined;
@@ -45,11 +46,15 @@ const toAvatarUrl = (avatar: string | null | undefined): string | undefined => {
 export const ProfileCard = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
-  const { data: currentUser } = useCurrentUserQuery();
+  const { data: currentUser, isLoading } = useCurrentUserQuery();
   const uploadAvatarMutation = useUploadAvatarMutation();
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | undefined>(
     undefined,
   );
+
+  if (isLoading) {
+    return <SettingsCardSkeleton title="Your profile" lines={1} />;
+  }
 
   const fullName = currentUser?.name?.trim() || "Unknown User";
   const avatarUrl = localAvatarUrl ?? toAvatarUrl(currentUser?.avatar);

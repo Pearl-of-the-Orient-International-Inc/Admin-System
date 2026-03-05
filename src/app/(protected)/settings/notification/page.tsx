@@ -123,7 +123,7 @@ const Page = () => {
   );
 
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Notification Settings"
         description="Manage the types of notifications you receive."

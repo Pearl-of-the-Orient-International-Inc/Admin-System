@@ -8,8 +8,42 @@ import { CookieCategory } from "./_components/CookieCategory";
 import { CookiePolicyInfo } from "./_components/CookiePolicyInfo";
 import { useToast } from '@/hooks/use-toast';
 
+const COOKIE_PREFS_STORAGE_KEY = "pearl_cookie_preferences";
+const COOKIE_PREFS_UPDATED_AT_STORAGE_KEY = "pearl_cookie_preferences_updated_at";
+const DEFAULT_COOKIE_PREFERENCES: CookiePreferencesState = {
+  essential: true,
+  functional: true,
+  analytics: false,
+};
+
+const getStoredPreferences = (): CookiePreferencesState => {
+  if (typeof window === "undefined") return DEFAULT_COOKIE_PREFERENCES;
+
+  try {
+    const raw = window.localStorage.getItem(COOKIE_PREFS_STORAGE_KEY);
+    if (!raw) return DEFAULT_COOKIE_PREFERENCES;
+
+    const parsed = JSON.parse(raw) as Partial<CookiePreferencesState>;
+    return {
+      essential: true,
+      functional: Boolean(parsed.functional),
+      analytics: Boolean(parsed.analytics),
+    };
+  } catch {
+    return DEFAULT_COOKIE_PREFERENCES;
+  }
+};
+
+const getStoredUpdatedAt = (): string | null => {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(COOKIE_PREFS_UPDATED_AT_STORAGE_KEY);
+};
+
 const Page = () => {
   const { toast } = useToast();
+  const [hydratedPreferences] = useState<CookiePreferencesState>(() =>
+    getStoredPreferences(),
+  );
 
   // Initial cookie categories data
   const [cookieCategories, setCookieCategories] = useState<
@@ -62,7 +96,7 @@ const Page = () => {
       description:
         "These cookies remember ministry workflow preferences so the platform can provide a more consistent seminary and chaplaincy experience.",
       isRequired: false,
-      isEnabled: true,
+      isEnabled: hydratedPreferences.functional,
       cookieCount: 3,
       cookies: [
         {
@@ -97,7 +131,7 @@ const Page = () => {
       description:
         "These cookies help us understand how people use seminary and chaplaincy features so we can improve accessibility, guidance, and ministry workflows.",
       isRequired: false,
-      isEnabled: false,
+      isEnabled: hydratedPreferences.analytics,
       cookieCount: 3,
       cookies: [
         {
@@ -128,11 +162,13 @@ const Page = () => {
     },
   ]);
 
-  const [initialState, setInitialState] = useState<CookiePreferencesState>({
-    essential: true,
-    functional: true,
-    analytics: false,
-  });
+  const [initialState, setInitialState] = useState<CookiePreferencesState>(
+    hydratedPreferences,
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(() =>
+    getStoredUpdatedAt(),
+  );
 
   const getCurrentPreferencesState = (
     categories: CookieCategoryData[],
@@ -156,6 +192,20 @@ const Page = () => {
     );
   }, [cookieCategories, initialState]);
 
+  const persistPreferences = async (nextState: CookiePreferencesState) => {
+    setIsSaving(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 700));
+
+    const updatedAt = new Date().toISOString();
+    window.localStorage.setItem(COOKIE_PREFS_STORAGE_KEY, JSON.stringify(nextState));
+    window.localStorage.setItem(COOKIE_PREFS_UPDATED_AT_STORAGE_KEY, updatedAt);
+
+    setInitialState(nextState);
+    setLastSavedAt(updatedAt);
+    setIsSaving(false);
+  };
+
   const handleToggleCategory = (categoryId: string, enabled: boolean) => {
     setCookieCategories((prev) =>
       prev.map((cat) =>
@@ -164,60 +214,65 @@ const Page = () => {
     );
   };
 
-  const handleAcceptAll = () => {
-    setCookieCategories((prev) =>
-      prev.map((cat) => ({ ...cat, isEnabled: true })),
-    );
+  const handleAcceptAll = async () => {
+    if (isSaving) return;
+
+    const nextState: CookiePreferencesState = {
+      essential: true,
+      functional: true,
+      analytics: true,
+    };
+
+    setCookieCategories((prev) => prev.map((cat) => ({ ...cat, isEnabled: true })));
+    await persistPreferences(nextState);
 
     toast({
       title: "Preferences Saved",
       description: "All cookies have been enabled.",
-    });
-
-    // Update initial state
-    setInitialState({
-      essential: true,
-      functional: true,
-      analytics: true,
+      variant: "success",
     });
   };
 
-  const handleRejectAll = () => {
+  const handleRejectAll = async () => {
+    if (isSaving) return;
+
+    const nextState: CookiePreferencesState = {
+      essential: true,
+      functional: false,
+      analytics: false,
+    };
+
     setCookieCategories((prev) =>
       prev.map((cat) => ({
         ...cat,
         isEnabled: cat.isRequired ? true : false,
       })),
     );
+    await persistPreferences(nextState);
 
     toast({
       title: "Preferences Saved",
       description:
         "Optional cookies have been disabled. Only essential cookies remain active.",
-    });
-
-    // Update initial state
-    setInitialState({
-      essential: true,
-      functional: false,
-      analytics: false,
+      variant: "success",
     });
   };
 
-  const handleSavePreferences = () => {
-    // TODO: Save preferences to backend/localStorage
-    const currentState = getCurrentPreferencesState(cookieCategories);
+  const handleSavePreferences = async () => {
+    if (isSaving) return;
 
-    setInitialState(currentState);
+    const currentState = getCurrentPreferencesState(cookieCategories);
+    await persistPreferences(currentState);
 
     toast({
       title: "Preferences Saved",
       description: "Your cookie preferences have been updated successfully.",
+      variant: "success",
     });
   };
 
   return (
-    <div>
+    <div className="p-10">
       <Heading
         title="Cookie Settings"
         description="Manage how we use cookies to improve your experience on our platform."
@@ -230,6 +285,8 @@ const Page = () => {
           onRejectAll={handleRejectAll}
           onSavePreferences={handleSavePreferences}
           hasChanges={hasChanges}
+          isSaving={isSaving}
+          lastSavedAt={lastSavedAt}
         />
 
         {/* Cookie Categories */}
