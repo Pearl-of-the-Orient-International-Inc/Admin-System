@@ -73,13 +73,13 @@ export function MemoAnnouncementsPageContent() {
   }, [filter, records]);
 
   const announcementCount = useMemo(
-    () => records.filter((record) => record.category === "Announcement").length,
+    () => records.filter((record) => record.category === "ANNOUNCEMENT").length,
     [records],
   );
   const customTemplateCount = useMemo(
     () =>
       records.filter(
-        (record) => record.category === "Blank Template (Others)",
+        (record) => record.category === "BLANK",
       ).length,
     [records],
   );

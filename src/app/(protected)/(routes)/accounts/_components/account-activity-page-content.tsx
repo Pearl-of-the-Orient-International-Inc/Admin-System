@@ -32,8 +32,6 @@ export function AccountActivityPageContent({
         logs={[]}
         emptyTitle=""
         emptyDescription=""
-        createUrl="/accounts"
-        createLabel="Back to accounts"
         backUrl="/accounts"
         backLabel="Back to accounts"
         errorTitle="Unable to load account activity"
@@ -54,8 +52,6 @@ export function AccountActivityPageContent({
         logs={[]}
         emptyTitle=""
         emptyDescription=""
-        createUrl="/accounts"
-        createLabel="Back to accounts"
         backUrl="/accounts"
         backLabel="Back to accounts"
         errorTitle="Account not found"
@@ -71,8 +67,6 @@ export function AccountActivityPageContent({
       logs={activityLogsQuery.data ?? []}
       emptyTitle="No activity found for this account"
       emptyDescription="This administrator does not have any recorded activity yet."
-      createUrl="/accounts"
-      createLabel="Back to accounts"
       backUrl="/accounts"
       backLabel="Back to accounts"
       errorTitle={

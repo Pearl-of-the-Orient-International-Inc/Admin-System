@@ -51,7 +51,7 @@ export function SystemLogsPageContent() {
           error instanceof Error
             ? error.message
             : "Unable to delete this activity log.",
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setDeleteTargetLog(null);

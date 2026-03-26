@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 
 import {
@@ -63,6 +64,43 @@ const stageChartConfig = {
 } satisfies ChartConfig;
 
 export function DashboardCharts() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="grid gap-6 lg:col-span-2">
+        <Card className="border-border/70 bg-card/90 shadow-xs">
+          <CardHeader className="border-b">
+            <CardTitle>Membership and events trend</CardTitle>
+            <CardDescription>
+              Monthly movement across applications, approvals, and scheduled
+              activities.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="h-90 w-full rounded-xl border bg-muted/40" />
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-xs">
+          <CardHeader className="border-b">
+            <CardTitle>Onboarding queue</CardTitle>
+            <CardDescription>
+              Frontend snapshot of where applicants currently sit in the flow.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="h-[360px] w-full rounded-xl border bg-muted/40" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-6 lg:col-span-2">
       <Card>
