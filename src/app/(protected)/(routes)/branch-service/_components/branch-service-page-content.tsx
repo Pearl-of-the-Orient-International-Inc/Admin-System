@@ -20,7 +20,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageEmptyState } from "@/components/PageEmptyState";
+import { PageErrorState } from "@/components/PageErrorState";
+import { PageLoadingState } from "@/components/PageLoadingState";
 import { toApiError } from "@/features/auth/auth.hooks";
 import {
   useBranchServicesQuery,
@@ -45,6 +47,10 @@ export function BranchServicePageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const branchServices = branchServicesQuery.data?.items ?? [];
   const totalBranchServices = branchServices.length;
+  const hasNoBranchServices =
+    !branchServicesQuery.isLoading &&
+    !branchServicesQuery.isError &&
+    branchServices.length === 0;
 
   const totalSections = useMemo(
     () =>
@@ -121,87 +127,106 @@ export function BranchServicePageContent() {
             Create and maintain branch services with section-based content.
           </p>
         </div>
-        <CreateBranchServiceButton />
+        {!hasNoBranchServices && (
+          <CreateBranchServiceButton />
+        )}
       </div>
 
-      <Card className="overflow-hidden bg-transparent">
-        <CardHeader className="border-b bg-muted/20 pb-4">
-          <CardTitle>Branch Service Summary</CardTitle>
-          <CardDescription>
-            Quick overview of currently registered branch services.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-lg border bg-card p-4 shadow-xs">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-muted-foreground text-xs font-medium uppercase">Total</p>
-              <span className="rounded-md bg-blue-700/10 p-1.5 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300">
-                <GitBranchPlus className="size-4" />
-              </span>
-            </div>
-            <p className="text-2xl font-semibold">{totalBranchServices}</p>
-          </div>
+      {hasNoBranchServices ? (
+        <PageEmptyState
+          title="No branch services found"
+          description="Create your first branch of service to start organizing section-based content."
+          createUrl="/branch-service/new"
+          createLabel="Create branch service"
+        />
+      ) : (
+        <>
+          <Card className="overflow-hidden bg-transparent">
+            <CardHeader className="border-b pb-4">
+              <CardTitle>Branch Service Summary</CardTitle>
+              <CardDescription>
+                Quick overview of currently registered branch services.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border bg-card p-4 shadow-xs">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-muted-foreground text-xs font-medium uppercase">Total</p>
+                  <span className="rounded-md bg-blue-700/10 p-1.5 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300">
+                    <GitBranchPlus className="size-4" />
+                  </span>
+                </div>
+                <p className="text-2xl font-semibold">{totalBranchServices}</p>
+              </div>
 
-          <div className="rounded-lg border bg-card p-4 shadow-xs">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-muted-foreground text-xs font-medium uppercase">Sections</p>
-              <span className="rounded-md bg-emerald-700/10 p-1.5 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300">
-                <Layers3 className="size-4" />
-              </span>
-            </div>
-            <p className="text-2xl font-semibold">{totalSections}</p>
-          </div>
+              <div className="rounded-lg border bg-card p-4 shadow-xs">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-muted-foreground text-xs font-medium uppercase">Sections</p>
+                  <span className="rounded-md bg-emerald-700/10 p-1.5 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300">
+                    <Layers3 className="size-4" />
+                  </span>
+                </div>
+                <p className="text-2xl font-semibold">{totalSections}</p>
+              </div>
 
-          <div className="rounded-lg border bg-card p-4 shadow-xs">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-muted-foreground text-xs font-medium uppercase">
-                Avg. Sections
-              </p>
-              <span className="rounded-md bg-amber-700/10 p-1.5 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300">
-                <Layers3 className="size-4" />
-              </span>
-            </div>
-            <p className="text-2xl font-semibold">{averageSections}</p>
-          </div>
+              <div className="rounded-lg border bg-card p-4 shadow-xs">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-muted-foreground text-xs font-medium uppercase">
+                    Avg. Sections
+                  </p>
+                  <span className="rounded-md bg-amber-700/10 p-1.5 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300">
+                    <Layers3 className="size-4" />
+                  </span>
+                </div>
+                <p className="text-2xl font-semibold">{averageSections}</p>
+              </div>
 
-          <div className="rounded-lg border bg-card p-4 shadow-xs">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-muted-foreground text-xs font-medium uppercase">
-                Description Size
-              </p>
-              <span className="rounded-md bg-violet-700/10 p-1.5 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300">
-                <TextIcon className="size-4" />
-              </span>
-            </div>
-            <p className="text-2xl font-semibold">{totalDescriptionLength}</p>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="rounded-lg border bg-card p-4 shadow-xs">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-muted-foreground text-xs font-medium uppercase">
+                    Description Size
+                  </p>
+                  <span className="rounded-md bg-violet-700/10 p-1.5 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300">
+                    <TextIcon className="size-4" />
+                  </span>
+                </div>
+                <p className="text-2xl font-semibold">{totalDescriptionLength}</p>
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card className="bg-transparent">
-        <CardHeader className="border-b pb-4">
-          <CardTitle>Branch Service Directory</CardTitle>
-          <CardDescription>
-            Search, export, and manage branch services.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {branchServicesQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : (
-            <BranchServicesDataTable
-              data={branchServices}
-              onDeleteBranchService={requestDeleteBranchService}
-              onDeleteBranchServices={handleDeleteBranchServices}
-            />
-          )}
-        </CardContent>
-      </Card>
+          <Card className="bg-transparent">
+            <CardHeader className="border-b pb-4">
+              <CardTitle>Branch Service Directory</CardTitle>
+              <CardDescription>
+                Search, export, and manage branch services.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {branchServicesQuery.isLoading ? (
+                <PageLoadingState mode="table" />
+              ) : branchServicesQuery.isError ? (
+                <PageErrorState
+                  title="Unable to load branch services"
+                  description={
+                    branchServicesQuery.error instanceof Error
+                      ? branchServicesQuery.error.message
+                      : "Branch service records could not be loaded right now."
+                  }
+                  backUrl="/dashboard"
+                  backLabel="Back to dashboard"
+                />
+              ) : (
+                <BranchServicesDataTable
+                  data={branchServices}
+                  onDeleteBranchService={requestDeleteBranchService}
+                  onDeleteBranchServices={handleDeleteBranchServices}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <AlertDialog
         open={Boolean(deleteTargetId)}

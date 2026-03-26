@@ -17,10 +17,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { GlobalDataTable } from "@/components/global-data-table";
+import { GlobalDataTable } from "@/components/DataTable";
 import { useToast } from "@/hooks/use-toast";
 import type { BranchServiceResource } from "@/features/branch-service/branch-service.types";
 
@@ -100,6 +101,7 @@ export function BranchServicesDataTable({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={async () => {
                 try {
@@ -121,7 +123,6 @@ export function BranchServicesDataTable({
               <Copy className="size-4" />
               Copy ID
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href={`/branch-service/${row.original.id}/view-details`}>
                 <Eye className="size-4" />

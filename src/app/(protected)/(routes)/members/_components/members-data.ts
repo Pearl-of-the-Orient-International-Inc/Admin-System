@@ -1,68 +1,24 @@
-export type MemberStatus = "Approved" | "Pending" | "Archived";
+import { CivilStatus, Gender, MemberStatus, MemberType } from "@/enums";
+import type { AdminMember } from "@/lib/api-types";
+
+export type MemberRecordStatus = "Approved" | "Pending" | "Rejected" | "Archived";
 
 export type MemberRecord = {
   id: string;
+  memberId: string;
+  uniqueId: string | null;
+  avatarUrl: string | null;
   fullName: string;
+  memberType: string;
   email: string;
   mobile: string;
   civilStatus: string;
   branchOfService: string;
-  status: MemberStatus;
+  gender: Gender;
+  status: MemberRecordStatus;
+  badgeNumber: string | null;
   appliedAt: string;
 };
-
-export const memberRecords: MemberRecord[] = [
-  {
-    id: "MEM-001",
-    fullName: "Juan Dela Cruz",
-    email: "juan.delacruz@pearlorient.org",
-    mobile: "09152479693",
-    civilStatus: "Single",
-    branchOfService: "Humanitarian",
-    status: "Approved",
-    appliedAt: "2026-02-18",
-  },
-  {
-    id: "MEM-002",
-    fullName: "Maria Santos",
-    email: "maria.santos@pearlorient.org",
-    mobile: "09172861120",
-    civilStatus: "Married",
-    branchOfService: "School",
-    status: "Pending",
-    appliedAt: "2026-02-26",
-  },
-  {
-    id: "MEM-003",
-    fullName: "Ronaldo Manalo",
-    email: "ronaldo.manalo@pearlorient.org",
-    mobile: "09234517890",
-    civilStatus: "Widowed",
-    branchOfService: "Military/PNP",
-    status: "Approved",
-    appliedAt: "2026-01-29",
-  },
-  {
-    id: "MEM-004",
-    fullName: "Elena Garcia",
-    email: "elena.garcia@pearlorient.org",
-    mobile: "09191239874",
-    civilStatus: "Single",
-    branchOfService: "Hospital and Care",
-    status: "Archived",
-    appliedAt: "2025-12-17",
-  },
-  {
-    id: "MEM-005",
-    fullName: "Noel Roland",
-    email: "noel.roland@pearlorient.org",
-    mobile: "09987653210",
-    civilStatus: "Married",
-    branchOfService: "Security",
-    status: "Pending",
-    appliedAt: "2026-02-28",
-  },
-];
 
 export const branchOfServiceOptions = [
   "Humanitarian",
@@ -77,3 +33,71 @@ export const branchOfServiceOptions = [
   "DSWD",
   "Others",
 ];
+
+export function mapMemberToRecord(member: AdminMember): MemberRecord {
+  return {
+    id: member.uniqueId ?? member.id,
+    memberId: member.id,
+    uniqueId: member.uniqueId,
+    avatarUrl: member.user.avatar,
+    fullName: buildFullName(member),
+    memberType: formatMemberType(member.memberType),
+    email: member.user.email,
+    mobile: member.mobilePhoneNumber?.trim() || "Not provided",
+    gender: member.gender,
+    civilStatus: formatCivilStatus(member.civilStatus),
+    branchOfService: member.preferredBranchOther?.trim() || "Not specified",
+    status: getMemberRecordStatus(member),
+    badgeNumber: member.badgeNumber,
+    appliedAt: member.createdAt,
+  };
+}
+
+function formatMemberType(memberType: MemberType) {
+  switch (memberType) {
+    case MemberType.PROFESSIONAL_CHAPLAIN:
+      return "Professional Chaplain";
+    case MemberType.ORDAINED_AND_COMMISSIONED_PRACTITIONER:
+      return "Ordained and Commissioned Practitioner";
+    case MemberType.CERTIFIED_SPECIALIST_TRAINING_OFFICER_INSTRUCTOR:
+      return "Certified Specialist Training Officer/Instructor";
+    case MemberType.ASSOCIATE_CHAPLAIN:
+    default:
+      return "Associate Chaplain";
+  }
+}
+
+function buildFullName(member: AdminMember) {
+  return [
+    member.firstName,
+    member.middleInitial?.trim(),
+    member.lastName,
+    member.extensionName?.trim(),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function formatCivilStatus(civilStatus: CivilStatus | null) {
+  if (!civilStatus) {
+    return "Not specified";
+  }
+
+  return civilStatus.charAt(0) + civilStatus.slice(1).toLowerCase();
+}
+
+function getMemberRecordStatus(member: AdminMember): MemberRecordStatus {
+  if (!member.isActive) {
+    return "Archived";
+  }
+
+  if (member.status === MemberStatus.APPROVED) {
+    return "Approved";
+  }
+
+  if (member.status === MemberStatus.REJECTED) {
+    return "Rejected";
+  }
+
+  return "Pending";
+}

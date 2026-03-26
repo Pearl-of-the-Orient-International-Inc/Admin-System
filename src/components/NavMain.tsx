@@ -40,6 +40,10 @@ export const NavMain = ({
   }[];
 }) => {
   const pathname = usePathname();
+
+  const isPathActive = (url: string) =>
+    pathname === url || pathname.startsWith(`${url}/`);
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
@@ -47,6 +51,10 @@ export const NavMain = ({
           {items.map((item) => {
             // Check if item has subItems
             const hasSubItems = item.subItems && item.subItems.length > 0;
+            const activeSubItemUrl = item.subItems
+              ?.filter((subItem) => isPathActive(subItem.url))
+              .sort((a, b) => b.url.length - a.url.length)[0]?.url;
+            const hasActiveSubItem = Boolean(activeSubItemUrl);
 
             // If no subItems, render simple menu button
             if (!hasSubItems) {
@@ -59,7 +67,7 @@ export const NavMain = ({
                     )}
                     tooltip={item.title}
                     asChild
-                    isActive={pathname === item.url}
+                    isActive={isPathActive(item.url)}
                   >
                     <a href={item.url}>
                       {item.icon && <item.icon />}
@@ -88,7 +96,7 @@ export const NavMain = ({
               <Collapsible
                 key={item.title}
                 asChild
-                defaultOpen={item.subItems?.some((s) => pathname.includes(s.url))}
+                defaultOpen={hasActiveSubItem}
                 className="group/collapsible"
               >
                 <SidebarMenuItem>
@@ -99,7 +107,7 @@ export const NavMain = ({
                           "cursor-not-allowed user-select-none hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground",
                       )}
                       tooltip={item.title}
-                      isActive={pathname === item.url}
+                      isActive={Boolean(hasActiveSubItem)}
                     >
                       {item.icon && <item.icon />}
                       <span>{item.title}</span>
@@ -129,7 +137,7 @@ export const NavMain = ({
                                 "cursor-not-allowed user-select-none hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground",
                             )}
                             asChild
-                            isActive={pathname === subItem.url}
+                            isActive={activeSubItemUrl === subItem.url}
                           >
                             <a href={subItem.url}>
                               <span>{subItem.title}</span>

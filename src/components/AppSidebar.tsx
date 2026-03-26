@@ -53,27 +53,23 @@ const data = {
     },
     {
       title: "Branch of Services",
-      url: "#",
+      url: "/branch-service",
       icon: IconBuildingChurch,
-      subItems: [
-        {
-          title: "Worship Schedules",
-          url: "/worship/schedules",
-        },
-        {
-          title: "Service Requests",
-          url: "/worship/requests",
-        },
-        {
-          title: "Ministry Assignments",
-          url: "/worship/assignments",
-        },
-      ],
     },
     {
       title: "Organizational Structure",
-      url: "/organizational-structure",
+      url: "#",
       icon: IconBuildingWarehouse,
+      subItems: [
+        {
+          title: "Overview",
+          url: "/organizational-structure",
+        },
+        {
+          title: "Office Titles",
+          url: "/organizational-structure/office-title",
+        },
+      ],
     },
     {
       title: "Events",
@@ -101,8 +97,8 @@ const data = {
       ],
     },
     {
-      title: "Announcements",
-      url: "/announcements",
+      title: "Memo & Announcements",
+      url: "/memo-announcements",
       icon: IconMessageCircle,
     },
     {
@@ -134,7 +130,7 @@ const data = {
     },
     {
       title: "Backup Database",
-      url: "/backup",
+      url: "/backup-database",
       icon: IconDatabase,
     },
   ],

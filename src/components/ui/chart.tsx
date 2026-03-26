@@ -105,9 +105,11 @@ ${colorConfig
 const ChartTooltip = RechartsPrimitive.Tooltip
 
 type ChartTooltipContentProps = React.ComponentProps<"div"> &
-  RechartsPrimitive.TooltipContentProps<
-    number | string | ReadonlyArray<number | string>,
-    number | string
+  Partial<
+    RechartsPrimitive.TooltipContentProps<
+      number | string | ReadonlyArray<number | string>,
+      number | string
+    >
   > & {
     hideLabel?: boolean
     hideIndicator?: boolean

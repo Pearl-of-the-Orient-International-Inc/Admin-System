@@ -9,7 +9,7 @@ type PageProps = {
 const Page = async ({ params }: PageProps) => {
   const { branchServiceId } = await params;
 
-  if (branchServiceId === "new") {
+  if (branchServiceId === "create") {
     return <BranchServiceForm mode="create" />;
   }
 

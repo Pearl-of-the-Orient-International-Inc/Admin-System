@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Inter, Lora, Roboto_Mono } from "next/font/google";
 import QueryProvider from "@/components/providers/Query";
-import { GeneralProvider } from '@/components/providers/General';
+import { GeneralProvider } from "@/components/providers/General";
 import "./globals.css";
 
-const geistSans = Inter({
-  variable: "--font-geist-sans",
+const fontSans = Inter({
   subsets: ["latin"],
+  variable: "--font-sans",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fontSerif = Lora({
   subsets: ["latin"],
+  variable: "--font-serif",
+});
+
+const fontMono = Roboto_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -36,12 +41,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}
       >
         <QueryProvider>
-          <GeneralProvider>
-            {children}
-          </GeneralProvider>
+          <GeneralProvider>{children}</GeneralProvider>
         </QueryProvider>
       </body>
     </html>

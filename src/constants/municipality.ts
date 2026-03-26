@@ -3,7 +3,7 @@ export const getMunicipalities = (province_id: number | null) => {
     return [];
   }
   return municipality.filter(
-    (municipality) => municipality.province_id === province_id,
+    (municipality) => municipality.province_id === province_id
   );
 };
 

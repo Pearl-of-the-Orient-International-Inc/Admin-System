@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <style>
+    .p{stroke:var(--memo-primary,#145224)}
+    .s{stroke:var(--memo-secondary,#6FAF7C);fill:color-mix(in srgb, var(--memo-secondary,#6FAF7C) 12%, transparent)}
+    .cap{stroke-linecap:round;stroke-linejoin:round}
+  </style>
+  <path class="p cap" stroke-width="3.5" d="M18 8h22l8 8v34a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V14a6 6 0 0 1 6-6Z"/>
+  <path class="p cap" stroke-width="3.5" d="M40 8v8h8"/>
+  <rect class="s cap" x="18" y="24" width="28" height="22" rx="4" stroke-width="3.5"/>
+  <path class="p cap" stroke-width="3.5" d="M18 31h28M25 21v6M39 21v6"/>
+  <path class="p cap" stroke-width="3" d="M24 36h4M32 36h4M40 36h0M24 42h4M32 42h4"/>
+  <path class="p cap" stroke-width="3" d="M20 18h13M20 23h9"/>
+</svg>

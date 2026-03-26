@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   type ColumnDef,
   flexRender,
@@ -43,22 +43,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type GlobalDataTableProps<TData extends Record<string, unknown>, TValue> = {
+type GlobalDataTableProps<TData extends object, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   cellAction?: (row: Row<TData>) => React.ReactNode;
   onDeleteSelected?: (rows: TData[]) => void;
+  renderSelectedActions?: (
+    rows: TData[],
+    helpers: { clearSelection: () => void },
+  ) => ReactNode;
   filterPlaceholder?: string;
   emptyMessage?: string;
   exportFileName?: string;
   pageSizeOptions?: number[];
 };
 
-export function GlobalDataTable<TData extends Record<string, unknown>, TValue>({
+export function GlobalDataTable<TData extends object, TValue>({
   columns,
   data,
   cellAction,
   onDeleteSelected,
+  renderSelectedActions,
   filterPlaceholder = "Filter data...",
   emptyMessage = "No records found.",
   exportFileName = "table-export",
@@ -153,7 +158,7 @@ export function GlobalDataTable<TData extends Record<string, unknown>, TValue>({
       const search = String(filterValue).toLowerCase().trim();
       if (!search) return true;
 
-      return Object.values(row.original).some((value) =>
+      return Object.values(row.original as Record<string, unknown>).some((value) =>
         String(value).toLowerCase().includes(search),
       );
     },
@@ -161,11 +166,12 @@ export function GlobalDataTable<TData extends Record<string, unknown>, TValue>({
 
   const filteredSelectedRows = table.getFilteredSelectedRowModel().rows;
   const selectedRowsData = filteredSelectedRows.map((row) => row.original);
+  const clearSelection = () => setRowSelection({});
 
   const handleDeleteSelected = () => {
     if (!selectedRowsData.length || !onDeleteSelected) return;
     onDeleteSelected(selectedRowsData);
-    setRowSelection({});
+    clearSelection();
   };
 
   const handleExportSelected = () => {
@@ -173,14 +179,16 @@ export function GlobalDataTable<TData extends Record<string, unknown>, TValue>({
 
     const headers = Array.from(
       selectedRowsData.reduce((keys, row) => {
-        Object.keys(row).forEach((key) => keys.add(key));
+        Object.keys(row as Record<string, unknown>).forEach((key) => keys.add(key));
         return keys;
       }, new Set<string>()),
     );
 
     const csvRows = selectedRowsData.map((row) =>
       headers
-        .map((key) => String(row[key] ?? "").replaceAll('"', '""'))
+        .map((key) =>
+          String((row as Record<string, unknown>)[key] ?? "").replaceAll('"', '""'),
+        )
         .map((value) => `"${value}"`)
         .join(","),
     );
@@ -208,7 +216,7 @@ export function GlobalDataTable<TData extends Record<string, unknown>, TValue>({
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
             placeholder={filterPlaceholder}
-            className="lg:w-85 peer px-9 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none"
+            className="lg:w-110 peer px-9 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none"
           />
           {isSearching && (
             <div className="text-muted-foreground pointer-events-none absolute inset-y-0 right-0 flex items-center justify-center pr-3 peer-disabled:opacity-50">
@@ -224,7 +232,8 @@ export function GlobalDataTable<TData extends Record<string, unknown>, TValue>({
               <Download className="size-4" />
               Export CSV
             </Button>
-            {onDeleteSelected && (
+            {renderSelectedActions?.(selectedRowsData, { clearSelection })}
+            {!renderSelectedActions && onDeleteSelected ? (
               <Button
                 variant="destructive"
                 size="sm"
@@ -233,7 +242,7 @@ export function GlobalDataTable<TData extends Record<string, unknown>, TValue>({
                 <Trash2 className="size-4" />
                 Delete
               </Button>
-            )}
+            ) : null}
           </div>
         )}
       </div>
@@ -267,7 +276,7 @@ export function GlobalDataTable<TData extends Record<string, unknown>, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className="align-top whitespace-normal"
+                      className="align-center whitespace-normal"
                     >
                       {flexRender(
                         cell.column.columnDef.cell,

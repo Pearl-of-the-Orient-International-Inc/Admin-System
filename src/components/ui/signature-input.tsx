@@ -161,16 +161,17 @@ export default function SignatureInput({
     // Update external ref if provided
     if (externalCanvasRef) {
       ;(
+        // eslint-disable-next-line react-hooks/immutability
         externalCanvasRef as React.MutableRefObject<HTMLCanvasElement | null>
       ).current = element
     }
   }
 
   return (
-    <div className="border border-gray-300 rounded-md overflow-hidden relative w-[400px] h-[200px]">
+    <div className="border border-gray-300 rounded-md overflow-hidden relative w-132 h-50">
       <canvas
         ref={setCanvasRef}
-        width={400}
+        width={530}
         height={200}
         className="w-full h-full"
         onMouseDown={startDrawing}

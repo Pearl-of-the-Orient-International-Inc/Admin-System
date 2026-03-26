@@ -18,11 +18,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { GlobalDataTable } from "@/components/global-data-table";
+import { GlobalDataTable } from "@/components/DataTable";
 import { useToast } from "@/hooks/use-toast";
 import { UserAccountStatus } from "@/enums";
 import type { AccountRecord } from "./accounts-data";
@@ -71,20 +72,20 @@ export function AccountsDataTable({
         ),
       },
       {
-        accessorKey: "role",
-        header: "Role",
-        cell: ({ row }) => (
-          <Badge
-            variant={row.original.role === "ADMIN" ? "default" : "secondary"}
-          >
-            {row.original.role}
-          </Badge>
-        ),
-      },
-      {
         accessorKey: "position",
         header: "Position",
         cell: ({ row }) => formatPositionLabel(row.original.position),
+      },
+      {
+        accessorKey: "isTwoFactorEnabled",
+        header: "Two Factor Auth",
+        cell: ({ row }) => (
+          <Badge
+            variant={row.original.isTwoFactorEnabled ? "success" : "error"}
+          >
+            {row.original.isTwoFactorEnabled ? "Enabled" : "Disabled"}
+          </Badge>
+        ),
       },
       {
         accessorKey: "status",
@@ -138,6 +139,7 @@ export function AccountsDataTable({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={async () => {
                 try {

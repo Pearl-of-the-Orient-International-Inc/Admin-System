@@ -4,21 +4,35 @@ import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowDownUp } from "lucide-react";
 
-import { GlobalDataTable } from "@/components/global-data-table";
+import { GlobalDataTable } from "@/components/DataTable";
+import { EventStatus } from "@/enums";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { EventRecord } from "./events-data";
+import {
+  getEventStatusLabel,
+  getEventTypeLabel,
+  resolveEventStatus,
+  type EventRecord,
+} from "./events-data";
+import { EventActionsMenu } from "./event-actions-menu";
 
 type EventsDataTableProps = {
   data: EventRecord[];
   onDeleteEvents: (eventIds: string[]) => void;
+  onViewEvent: (event: EventRecord) => void;
+  onCancelEvent: (event: EventRecord) => void;
 };
 
-export function EventsDataTable({ data, onDeleteEvents }: EventsDataTableProps) {
+export function EventsDataTable({
+  data,
+  onDeleteEvents,
+  onViewEvent,
+  onCancelEvent,
+}: EventsDataTableProps) {
   const columns = useMemo<ColumnDef<EventRecord>[]>(
     () => [
       {
-        accessorKey: "title",
+        accessorKey: "name",
         header: ({ column }) => (
           <Button
             variant="ghost"
@@ -30,64 +44,88 @@ export function EventsDataTable({ data, onDeleteEvents }: EventsDataTableProps) 
           </Button>
         ),
         cell: ({ row }) => (
-          <div>
-            <p className="font-medium">{row.original.title}</p>
-            <p className="text-muted-foreground text-xs">{row.original.id}</p>
+          <div className="max-w-75">
+            <p className="font-medium line-clamp-1">{row.original.name}</p>
+            <p className="text-muted-foreground text-xs">ID: {row.original.id}</p>
           </div>
         ),
       },
       {
-        accessorKey: "category",
-        header: "Category",
-      },
-      {
-        accessorKey: "location",
-        header: "Location",
+        accessorKey: "type",
+        header: "Type",
+        cell: ({ row }) => getEventTypeLabel(row.original.type),
       },
       {
         accessorKey: "organizer",
         header: "Organizer",
       },
       {
+        accessorKey: "location",
+        header: "Location",
+        cell: ({ row }) => row.original.location ?? "Online",
+      },
+      {
         accessorKey: "startsAt",
-        header: "Schedule",
-        cell: ({ row }) =>
-          new Date(row.original.startsAt).toLocaleString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+        header: "Start Date",
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <p>
+              {new Date(row.original.startsAt).toLocaleString("en-US", {
+                year: "numeric",
+                day: "numeric",
+                month: "short",
+              })}
+            </p>
+            <span className="text-sm text-muted-foreground">
+              {new Date(row.original.startsAt).toLocaleString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          </div>
+        ),
       },
       {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => {
-          if (row.original.status === "Scheduled") {
-            return <Badge variant="secondary">Scheduled</Badge>;
+          const status = resolveEventStatus(row.original);
+
+          if (status === EventStatus.SCHEDULED) {
+            return <Badge variant="info">{getEventStatusLabel(status)}</Badge>;
           }
-          if (row.original.status === "Ongoing") {
-            return <Badge variant="warning">Ongoing</Badge>;
+          if (status === EventStatus.ONGOING) {
+            return (
+              <Badge variant="warning">{getEventStatusLabel(status)}</Badge>
+            );
           }
-          if (row.original.status === "Completed") {
-            return <Badge variant="success">Completed</Badge>;
+          if (status === EventStatus.COMPLETED) {
+            return (
+              <Badge variant="success">{getEventStatusLabel(status)}</Badge>
+            );
           }
-          return <Badge variant="error">Cancelled</Badge>;
+          return <Badge variant="error">{getEventStatusLabel(status)}</Badge>;
         },
       },
     ],
-    []
+    [],
   );
 
   return (
     <GlobalDataTable
       data={data}
       columns={columns}
-      filterPlaceholder="Search event, category, organizer, location, or status..."
+      filterPlaceholder="Search event, category, type, organizer, visibility, or status..."
       emptyMessage="No events found."
       exportFileName="events"
       onDeleteSelected={(rows) => onDeleteEvents(rows.map((row) => row.id))}
+      cellAction={(row) => (
+        <EventActionsMenu
+          event={row.original}
+          onViewEvent={onViewEvent}
+          onCancelEvent={onCancelEvent}
+        />
+      )}
     />
   );
 }

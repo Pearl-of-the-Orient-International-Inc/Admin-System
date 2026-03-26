@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowDownUp, Check, Trash2 } from "lucide-react";
 
-import { GlobalDataTable } from "@/components/global-data-table";
+import { GlobalDataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import type { MemberRecord } from "../../_components/members-data";
 

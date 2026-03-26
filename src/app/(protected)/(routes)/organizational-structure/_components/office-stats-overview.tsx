@@ -1,7 +1,6 @@
 import {
   Building2,
   CheckCircle2,
-  ShieldCheck,
   UserRoundCheck,
   XCircle,
 } from "lucide-react"
@@ -54,7 +53,7 @@ export function OfficeStatsOverview({ offices }: OfficeStatsOverviewProps) {
 
   return (
     <Card className="overflow-hidden bg-transparent">
-      <CardHeader className="border-b bg-muted/20 pb-4">
+      <CardHeader className="border-b pb-4">
         <CardTitle>Office Summary</CardTitle>
         <CardDescription>
           Quick snapshot of your organizational structure health.

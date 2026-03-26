@@ -1,8 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { AlertTriangle } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 import {
   AlertDialog,
@@ -16,41 +15,34 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { PageEmptyState } from "@/components/PageEmptyState"
+import { PageErrorState } from "@/components/PageErrorState"
+import { PageLoadingState } from "@/components/PageLoadingState"
 import { useToast } from "@/hooks/use-toast"
+import { useAllOfficerAssignmentsQuery } from "@/features/officer-assignment/officer-assignment.hooks"
 import { ChangeOfficeHeadDialog } from "./change-office-head-dialog"
+import { AssignedOfficeHoldersTable } from "./assigned-office-holders-table"
 import { initialOfficeData, type Office } from "./office-data"
 import { organizationUsers, type OfficeUser } from "./office-users"
 import { OfficeStatsOverview } from "./office-stats-overview"
-import { OfficesDataTable } from "./offices-data-table"
 
 export function OrganizationalStructureManager() {
-  const router = useRouter()
   const { toast } = useToast()
   const [offices, setOffices] = useState<Office[]>(initialOfficeData)
   const [isChangeHeadDialogOpen, setIsChangeHeadDialogOpen] = useState(false)
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [selectedOfficeId, setSelectedOfficeId] = useState<string | null>(null)
   const [archiveTargetOfficeId, setArchiveTargetOfficeId] = useState<string | null>(null)
-
-  const activeOffices = useMemo(
-    () => offices.filter((office) => office.status === "Active").length,
-    [offices]
-  )
-
-  const handleDeleteOffices = (officeIds: string[]) => {
-    const ids = new Set(officeIds)
-    setOffices((current) => current.filter((office) => !ids.has(office.id)))
-  }
+  const officerAssignmentsQuery = useAllOfficerAssignmentsQuery({ activeOnly: true })
+  const hasNoOfficeAssignments =
+    !officerAssignmentsQuery.isLoading &&
+    !officerAssignmentsQuery.isError &&
+    (officerAssignmentsQuery.data?.length ?? 0) === 0
 
   const updateOffice = (officeId: string, updater: (office: Office) => Office) => {
     setOffices((current) =>
       current.map((office) => (office.id === officeId ? updater(office) : office))
     )
-  }
-
-  const handleEditOffice = (officeId: string) => {
-    router.push(`/organizational-structure/${officeId}`)
   }
 
   const handleArchiveOffice = (officeId: string) => {
@@ -66,34 +58,11 @@ export function OrganizationalStructureManager() {
     })
   }
 
-  const handleRequestArchiveOffice = (officeId: string) => {
-    setArchiveTargetOfficeId(officeId)
-    setIsArchiveDialogOpen(true)
-  }
-
   const handleConfirmArchiveOffice = () => {
     if (!archiveTargetOfficeId) return
     handleArchiveOffice(archiveTargetOfficeId)
     setIsArchiveDialogOpen(false)
     setArchiveTargetOfficeId(null)
-  }
-
-  const handleRetrieveOffice = (officeId: string) => {
-    updateOffice(officeId, (office) => ({
-      ...office,
-      status: "Active",
-      updatedAt: new Date().toISOString().slice(0, 10),
-    }))
-    toast({
-      variant: "success",
-      title: "Office retrieved",
-      description: "The office is active again.",
-    })
-  }
-
-  const handleOpenChangeHeadOffice = (officeId: string) => {
-    setSelectedOfficeId(officeId)
-    setIsChangeHeadDialogOpen(true)
   }
 
   const handleConfirmChangeHeadOffice = (user: OfficeUser) => {
@@ -127,7 +96,7 @@ export function OrganizationalStructureManager() {
   }
 
   return (
-    <section className="space-y-7">
+    <section className="space-y-7 p-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -137,34 +106,47 @@ export function OrganizationalStructureManager() {
             One organization, many offices. Define office posts, assign heads, and maintain role expectations.
           </p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => router.push("/organizational-structure/new")}>
-            Create Office
-          </Button>
-        </div>
       </div>
 
-      <OfficeStatsOverview offices={offices} />
-
-      <Card className="bg-transparent">
-        <CardHeader className="border-b pb-4">
-          <CardTitle>Office Directory</CardTitle>
-          <CardDescription className="max-w-3xl leading-relaxed">
-            {offices.length} offices registered, {activeOffices} active. This directory tracks office posts and assigned heads only.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <OfficesDataTable
-            data={offices}
-            onDeleteOffices={handleDeleteOffices}
-            onEditOffice={handleEditOffice}
-            onRequestArchiveOffice={handleRequestArchiveOffice}
-            onRetrieveOffice={handleRetrieveOffice}
-            onChangeHeadOffice={handleOpenChangeHeadOffice}
-          />
-        </CardContent>
-      </Card>
+      {hasNoOfficeAssignments ? (
+        <PageEmptyState
+          title="No office assignments found"
+          description="Create office titles and assign members to start building the organizational structure."
+          createUrl="/organizational-structure/office-title/new"
+          createLabel="Create office title"
+        />
+      ) : (
+        <>
+          <OfficeStatsOverview offices={offices} />
+          <Card className="bg-transparent">
+            <CardHeader className="border-b pb-4">
+              <CardTitle>Assigned Office Holders</CardTitle>
+              <CardDescription className="max-w-3xl leading-relaxed">
+                Overview of active members currently holding office assignments.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {officerAssignmentsQuery.isLoading ? (
+                <PageLoadingState mode="table" />
+              ) : officerAssignmentsQuery.isError ? (
+                <PageErrorState
+                  title="Unable to load office holders"
+                  description={
+                    officerAssignmentsQuery.error instanceof Error
+                      ? officerAssignmentsQuery.error.message
+                      : "The current office holder assignments could not be loaded right now."
+                  }
+                  backUrl="/dashboard"
+                  backLabel="Back to dashboard"
+                  className="min-h-40"
+                />
+              ) : (
+                <AssignedOfficeHoldersTable data={officerAssignmentsQuery.data ?? []} />
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <AlertDialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
         <AlertDialogContent>

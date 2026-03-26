@@ -1,4 +1,12 @@
-import { UserAccountStatus, UserPosition, UserType } from "@/enums";
+import {
+  CivilStatus,
+  Gender,
+  MemberStatus,
+  MemberType,
+  UserAccountStatus,
+  UserPosition,
+  UserType,
+} from "@/enums";
 
 export type ApiCode =
   | "OK"
@@ -132,4 +140,116 @@ export interface CreateUserAccountResponse {
   code: ApiCode;
   message: string;
   user: UserPublic;
+}
+
+export interface MemberPublic {
+  id: string;
+  userId: string;
+  status: MemberStatus;
+  memberType: MemberType;
+  firstName: string;
+  lastName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminMember {
+  id: string;
+  uniqueId: string | null;
+  userId: string;
+  status: MemberStatus;
+  memberType: MemberType;
+  firstName: string;
+  middleInitial: string | null;
+  lastName: string;
+  extensionName: string | null;
+  badgeNumber: string | null;
+  mobilePhoneNumber: string | null;
+  homeAddress: string | null;
+  civilStatus: CivilStatus | null;
+  gender: Gender;
+  nationality: string | null;
+  dateOfBirth: string;
+  region: string | null;
+  province: string | null;
+  municipalityCity: string | null;
+  barangay: string | null;
+  emergencyContactName: string | null;
+  emergencyContactMobile: string | null;
+  churchAffiliation: string | null;
+  churchAddress: string | null;
+  currentPositionRole: string | null;
+  currentPositionRoleOther: string | null;
+  height: string | null;
+  weight: string | null;
+  bloodType: string | null;
+  colorOfEyes: string | null;
+  colorOfSkin: string | null;
+  sssNumber: string | null;
+  tinNumber: string | null;
+  skillsTalents: string | null;
+  preferredBranchOther: string | null;
+  elementarySchool: string | null;
+  secondarySchool: string | null;
+  tertiaryCollege: string | null;
+  postGraduateStudies: string | null;
+  ministerialExperiences?: {
+    id: string;
+    roleDescription: string;
+    yearsApprox: string;
+    order: number;
+  }[];
+  characterReferences?: {
+    id: string;
+    name: string;
+    positionRelationship: string;
+    contactNumber: string;
+    order: number;
+  }[];
+  preferredBranches?: {
+    id: string;
+    title: string;
+  }[];
+  signature?: {
+    id: string;
+    type: string;
+    signatureData: string;
+  } | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  user: Pick<UserPublic, "id" | "name" | "email" | "avatar" | "role">;
+}
+
+export interface MembersPagination {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface MemberListResponse {
+  code: ApiCode;
+  message: string;
+  data: AdminMember[];
+  pagination: MembersPagination;
+}
+
+export interface MemberEnvelopeResponse {
+  code: ApiCode;
+  message: string;
+  data: AdminMember;
+}
+
+export interface CreateMemberByAdminResponse {
+  code: ApiCode;
+  message: string;
+  data: {
+    createdUser: boolean;
+    emailSent: boolean;
+    user: UserPublic;
+    member: MemberPublic;
+  };
 }

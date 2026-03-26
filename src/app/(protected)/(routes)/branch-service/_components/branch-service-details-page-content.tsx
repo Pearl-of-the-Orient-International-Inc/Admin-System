@@ -117,7 +117,7 @@ export function BranchServiceDetailsPageContent({
 
         <main className="w-full p-0 overflow-hidden">
           <div className="p-6 lg:p-10">
-            <div className="prose dark:prose-invert max-w-none prose-headings:scroll-mt-8 prose-headings:font-semibold prose-a:no-underline prose-headings:tracking-tight prose-headings:text-balance prose-p:tracking-tight prose-p:text-balance prose-lg">
+            <div className="prose dark:prose-invert max-w-none prose-headings:scroll-mt-8 prose-headings:font-semibold prose-a:no-underline prose-headings:tracking-tight prose-headings:text-balance prose-p:tracking-tight prose-p:text-balance prose-lg prose-ul:list-disc prose-ol:list-decimal prose-li:marker:text-current">
               {branchService.sections?.map((section, index) => (
                 <section key={section.id ?? `${section.title}-${index}`} className="mb-8">
                   <h2 id={sectionId(section, index)}>{section.title}</h2>

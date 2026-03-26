@@ -1,49 +1,62 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
 
 import { useTheme } from "next-themes";
-import type { EventRecord } from "./events-data";
+import {
+  getEventCategoryLabel,
+  getEventStatusLabel,
+  getEventTypeLabel,
+  resolveEventStatus,
+  type EventRecord,
+} from "./events-data";
 
 type EventsCalendarViewProps = {
   data: EventRecord[];
+  onViewEvent: (event: EventRecord) => void;
 };
 
-export function EventsCalendarView({ data }: EventsCalendarViewProps) {
-  const router = useRouter();
+export function EventsCalendarView({
+  data,
+  onViewEvent,
+}: EventsCalendarViewProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   const statusColorMap: Record<EventRecord["status"], string> = useMemo(
     () => ({
-      Scheduled: isDark ? "#818cf8" : "#4f46e5",
-      Ongoing: isDark ? "#f59e0b" : "#d97706",
-      Completed: isDark ? "#34d399" : "#15803d",
-      Cancelled: isDark ? "#fb7185" : "#b91c1c",
+      SCHEDULED: isDark ? "#818cf8" : "#4f46e5",
+      ONGOING: isDark ? "#f59e0b" : "#d97706",
+      COMPLETED: isDark ? "#34d399" : "#15803d",
+      CANCELLED: isDark ? "#fb7185" : "#b91c1c",
     }),
     [isDark]
   );
 
   const calendarEvents = useMemo(
     () =>
-      data.map((event) => ({
-        id: event.id,
-        title: event.title,
-        start: event.startsAt,
-        backgroundColor: statusColorMap[event.status],
-        borderColor: statusColorMap[event.status],
-        extendedProps: {
-          category: event.category,
-          location: event.location,
-          organizer: event.organizer,
-          status: event.status,
-        },
-      })),
+      data.map((event) => {
+        const status = resolveEventStatus(event);
+
+        return {
+          id: event.id,
+          title: event.name,
+          start: event.startsAt,
+          end: event.endsAt,
+          backgroundColor: statusColorMap[status],
+          borderColor: statusColorMap[status],
+          extendedProps: {
+            category: getEventCategoryLabel(event.category),
+            type: getEventTypeLabel(event.type),
+            organizer: event.organizer,
+            status: getEventStatusLabel(status),
+          },
+        };
+      }),
     [data, statusColorMap]
   );
 
@@ -67,7 +80,10 @@ export function EventsCalendarView({ data }: EventsCalendarViewProps) {
         events={calendarEvents}
         eventClick={(info) => {
           info.jsEvent.preventDefault();
-          router.push(`/events/${info.event.id}`);
+          const selectedEvent = data.find((event) => event.id === info.event.id);
+          if (selectedEvent) {
+            onViewEvent(selectedEvent);
+          }
         }}
         eventTimeFormat={{
           hour: "numeric",

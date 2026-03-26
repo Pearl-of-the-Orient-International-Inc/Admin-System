@@ -134,7 +134,7 @@ export const HeaderToolbar = () => {
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup className='space-y-1'>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push(`/system-logs/${currentUser?.id}`)}>
               <ActivityIcon className="size-4" />
               Activity
             </DropdownMenuItem>
