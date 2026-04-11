@@ -19,6 +19,7 @@ export type ApplicationFormState = {
   lastName: string;
   extensionName: string;
   memberType: MemberType;
+  badgeNumber: string;
   emailAddress: string;
   address: string;
   phoneNumber: string;

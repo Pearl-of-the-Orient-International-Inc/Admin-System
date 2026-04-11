@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Info, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Info, LoaderCircle, Printer } from "lucide-react";
 
 import { MembershipApplicationForm } from "@/shared/membership-application/MembershipApplicationForm";
-import type { ApplicationFormState } from "@/shared/membership-application/types";
 import { getBarangays } from "@/constants/barangay";
 import { getMunicipalities } from "@/constants/municipality";
 import { getProvinces } from "@/constants/province";
@@ -29,6 +28,12 @@ import {
   mapFormToMemberPayload,
   mapMemberToFormState,
 } from "../_components/member-form-mappers";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ApplicationFormState } from "@/shared/membership-application/types";
 
 export default function AdminMemberFormPage() {
   const params = useParams<{ memberId: string }>();
@@ -38,8 +43,8 @@ export default function AdminMemberFormPage() {
   const updateMemberMutation = useUpdateMemberMutation();
 
   const routeMemberId = Array.isArray(params.memberId)
-    ? params.memberId[0] ?? "new"
-    : params.memberId ?? "new";
+    ? (params.memberId[0] ?? "new")
+    : (params.memberId ?? "new");
   const isCreateMode = routeMemberId === "new";
 
   const {
@@ -47,6 +52,39 @@ export default function AdminMemberFormPage() {
     isLoading,
     isError,
   } = useMemberByIdQuery(routeMemberId, !isCreateMode);
+
+  const handlePrintForm = () => {
+    try {
+      const printWindow = window.open(
+        "/print-templates/Membership_Application_Form.pdf",
+        "_blank",
+        "noopener,noreferrer",
+      );
+
+      if (!printWindow) {
+        throw new Error("Please allow pop-ups to print the application form.");
+      }
+
+      window.setTimeout(() => {
+        try {
+          printWindow.focus();
+          printWindow.print();
+        } catch {
+          // If the browser PDF viewer does not allow programmatic printing,
+          // opening the PDF tab is still a valid fallback for manual printing.
+        }
+      }, 800);
+    } catch (error) {
+      toast({
+        title: "PDF print failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unable to print the membership application form right now.",
+        variant: "error",
+      });
+    }
+  };
 
   const handleSubmit = async (form: ApplicationFormState) => {
     const payload = mapFormToMemberPayload(form);
@@ -142,12 +180,14 @@ export default function AdminMemberFormPage() {
               : "Update the stored member information using the same admin membership form."}
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link href="/members">
-            <ArrowLeft className="size-4" />
-            Back to members
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/members">
+              <ArrowLeft className="size-4" />
+              Back to members
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -159,7 +199,9 @@ export default function AdminMemberFormPage() {
             getMunicipalities,
             getBarangays,
           }}
-          initialForm={existingMember ? mapMemberToFormState(existingMember) : undefined}
+          initialForm={
+            existingMember ? mapMemberToFormState(existingMember) : undefined
+          }
           emailMode="editable"
           emailHelperText={
             isCreateMode
@@ -167,7 +209,9 @@ export default function AdminMemberFormPage() {
               : "Updating this email will also update the linked member account."
           }
           submitLabel={isCreateMode ? "Create member" : "Save changes"}
-          submittingLabel={isCreateMode ? "Creating member..." : "Saving changes..."}
+          submittingLabel={
+            isCreateMode ? "Creating member..." : "Saving changes..."
+          }
           successMessage={
             isCreateMode
               ? "Member profile created successfully."
@@ -189,7 +233,22 @@ export default function AdminMemberFormPage() {
               This route is protected by the existing admin session guard.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 pt-6 text-sm text-muted-foreground">
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="default"
+                  className="w-full"
+                  onClick={handlePrintForm}
+                >
+                  <Printer />
+                  Print PDF
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Print the membership application form PDF
+              </TooltipContent>
+            </Tooltip>
             <p>
               {isCreateMode
                 ? "This flow creates the member record directly in the database and skips website onboarding entirely."

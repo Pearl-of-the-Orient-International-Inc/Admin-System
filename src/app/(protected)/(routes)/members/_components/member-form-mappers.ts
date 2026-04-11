@@ -155,6 +155,7 @@ export const mapFormToMemberPayload = (
     lastName: form.lastName.trim(),
     extensionName: getOptional(form.extensionName),
     memberType: form.memberType,
+    badgeNumber: getOptional(form.badgeNumber),
     mobilePhoneNumber: getOptional(form.phoneNumber),
     homeAddress: getOptional(form.address),
     civilStatus: form.civilStatus ? CIVIL_STATUS_MAP[form.civilStatus] : undefined,
@@ -201,6 +202,65 @@ export const mapFormToMemberPayload = (
   };
 };
 
+export const mapAdminMemberToUpdatePayload = (
+  member: AdminMember,
+): CreateMemberByAdminRequest => {
+  return {
+    email: member.user.email.trim(),
+    firstName: member.firstName.trim(),
+    middleInitial: getOptional(member.middleInitial),
+    lastName: member.lastName.trim(),
+    extensionName: getOptional(member.extensionName),
+    memberType: member.memberType,
+    badgeNumber: getOptional(member.badgeNumber),
+    mobilePhoneNumber: getOptional(member.mobilePhoneNumber),
+    homeAddress: getOptional(member.homeAddress),
+    civilStatus: member.civilStatus ?? undefined,
+    gender: member.gender,
+    nationality: getOptional(member.nationality),
+    dateOfBirth: new Date(member.dateOfBirth).toISOString(),
+    region: getOptional(member.region),
+    province: getOptional(member.province),
+    municipalityCity: getOptional(member.municipalityCity),
+    barangay: getOptional(member.barangay),
+    emergencyContactName: getOptional(member.emergencyContactName),
+    emergencyContactMobile: getOptional(member.emergencyContactMobile),
+    churchAffiliation: getOptional(member.churchAffiliation),
+    churchAddress: getOptional(member.churchAddress),
+    currentPositionRole: getOptional(member.currentPositionRole),
+    currentPositionRoleOther: getOptional(member.currentPositionRoleOther),
+    height: getOptional(member.height),
+    weight: getOptional(member.weight),
+    bloodType: getOptional(member.bloodType),
+    colorOfEyes: getOptional(member.colorOfEyes),
+    colorOfSkin: getOptional(member.colorOfSkin),
+    sssNumber: getOptional(member.sssNumber),
+    tinNumber: getOptional(member.tinNumber),
+    skillsTalents: getOptional(member.skillsTalents),
+    preferredBranchIds: member.preferredBranches?.map((branch) => branch.id),
+    preferredBranchOther: getOptional(member.preferredBranchOther),
+    elementarySchool: getOptional(member.elementarySchool),
+    secondarySchool: getOptional(member.secondarySchool),
+    tertiaryCollege: getOptional(member.tertiaryCollege),
+    postGraduateStudies: getOptional(member.postGraduateStudies),
+    ministerialExperiences: member.ministerialExperiences?.map((experience) => ({
+      roleDescription: experience.roleDescription,
+      yearsApprox: experience.yearsApprox,
+    })),
+    characterReferences: member.characterReferences?.map((reference) => ({
+      name: reference.name,
+      positionRelationship: reference.positionRelationship,
+      contactNumber: reference.contactNumber,
+    })),
+    signature: member.signature
+      ? {
+          type: member.signature.type as SignatureType,
+          signatureData: member.signature.signatureData,
+        }
+      : undefined,
+  };
+};
+
 export const mapMemberToFormState = (member: AdminMember): ApplicationFormState => {
   const normalizedPosition = member.currentPositionRole?.trim() ?? "";
   const position = FORM_POSITION_OPTIONS.includes(
@@ -232,6 +292,7 @@ export const mapMemberToFormState = (member: AdminMember): ApplicationFormState 
     lastName: member.lastName ?? "",
     extensionName: member.extensionName ?? "",
     memberType: member.memberType,
+    badgeNumber: member.badgeNumber ?? "",
     emailAddress: member.user.email ?? "",
     address: member.homeAddress ?? "",
     phoneNumber: member.mobilePhoneNumber ?? "",

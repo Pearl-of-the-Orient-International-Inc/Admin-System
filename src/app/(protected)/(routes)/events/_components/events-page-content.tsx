@@ -33,9 +33,19 @@ import { Button } from "@/components/ui/button";
 import { EventDetailsSheet } from "./event-details-sheet";
 import { EventsDataTable } from "./events-data-table";
 import { resolveEventStatus, type EventRecord } from "./events-data";
+import { SummaryStatCard } from "@/components/SummaryStatCard";
+
+type EventSummaryFilter =
+  | "ALL"
+  | EventStatus.SCHEDULED
+  | EventStatus.ONGOING
+  | EventStatus.COMPLETED
+  | EventStatus.CANCELLED;
 
 export function EventsPageContent() {
   const { toast } = useToast();
+  const [summaryFilter, setSummaryFilter] =
+    useState<EventSummaryFilter>("ALL");
   const { data, isLoading, isError, error } = useEventsQuery({
     limit: 100,
     sortBy: "startsAt",
@@ -77,6 +87,13 @@ export function EventsPageContent() {
       ).length,
     [events],
   );
+  const filteredEvents = useMemo(() => {
+    if (summaryFilter === "ALL") {
+      return events;
+    }
+
+    return events.filter((event) => resolveEventStatus(event) === summaryFilter);
+  }, [events, summaryFilter]);
 
   const handleDeleteEvents = async (eventIds: string[]) => {
     try {
@@ -160,80 +177,51 @@ export function EventsPageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Total Events
-                  </p>
-                  <span className="rounded-md bg-blue-700/10 p-1.5 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300">
-                    <ListChecks className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{totalEvents}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  All event records
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Scheduled
-                  </p>
-                  <span className="rounded-md bg-indigo-700/10 p-1.5 text-indigo-700 dark:bg-indigo-300/10 dark:text-indigo-300">
-                    <CalendarCheck2 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{scheduledEvents}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Queued for upcoming dates
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Ongoing
-                  </p>
-                  <span className="rounded-md bg-amber-700/10 p-1.5 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300">
-                    <Clock3 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{ongoingEvents}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Currently in progress
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Completed
-                  </p>
-                  <span className="rounded-md bg-emerald-700/10 p-1.5 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300">
-                    <CalendarCheck2 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{completedEvents}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Finished events
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Cancelled
-                  </p>
-                  <span className="rounded-md bg-rose-700/10 p-1.5 text-rose-700 dark:bg-rose-300/10 dark:text-rose-300">
-                    <XCircle className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{cancelledEvents}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Cancelled or postponed
-                </p>
-              </div>
+              <SummaryStatCard
+                label="Total Events"
+                value={totalEvents}
+                description="All event records"
+                icon={<ListChecks className="size-4" />}
+                accentClassName="bg-blue-700/10 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300"
+                active={summaryFilter === "ALL"}
+                onClick={() => setSummaryFilter("ALL")}
+              />
+              <SummaryStatCard
+                label="Scheduled"
+                value={scheduledEvents}
+                description="Queued for upcoming dates"
+                icon={<CalendarCheck2 className="size-4" />}
+                accentClassName="bg-indigo-700/10 text-indigo-700 dark:bg-indigo-300/10 dark:text-indigo-300"
+                active={summaryFilter === EventStatus.SCHEDULED}
+                onClick={() => setSummaryFilter(EventStatus.SCHEDULED)}
+              />
+              <SummaryStatCard
+                label="Ongoing"
+                value={ongoingEvents}
+                description="Currently in progress"
+                icon={<Clock3 className="size-4" />}
+                accentClassName="bg-amber-700/10 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300"
+                active={summaryFilter === EventStatus.ONGOING}
+                onClick={() => setSummaryFilter(EventStatus.ONGOING)}
+              />
+              <SummaryStatCard
+                label="Completed"
+                value={completedEvents}
+                description="Finished events"
+                icon={<CalendarCheck2 className="size-4" />}
+                accentClassName="bg-emerald-700/10 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300"
+                active={summaryFilter === EventStatus.COMPLETED}
+                onClick={() => setSummaryFilter(EventStatus.COMPLETED)}
+              />
+              <SummaryStatCard
+                label="Cancelled"
+                value={cancelledEvents}
+                description="Cancelled or postponed"
+                icon={<XCircle className="size-4" />}
+                accentClassName="bg-rose-700/10 text-rose-700 dark:bg-rose-300/10 dark:text-rose-300"
+                active={summaryFilter === EventStatus.CANCELLED}
+                onClick={() => setSummaryFilter(EventStatus.CANCELLED)}
+              />
             </CardContent>
           </Card>
 
@@ -268,7 +256,7 @@ export function EventsPageContent() {
                     />
                   ) : (
                     <EventsDataTable
-                      data={events}
+                      data={filteredEvents}
                       onDeleteEvents={handleDeleteEvents}
                       onViewEvent={handleViewEvent}
                       onCancelEvent={handleCancelEvent}
@@ -303,7 +291,7 @@ export function EventsPageContent() {
                     />
                   ) : (
                     <EventsCalendarView
-                      data={events}
+                      data={filteredEvents}
                       onViewEvent={handleViewEvent}
                     />
                   )}

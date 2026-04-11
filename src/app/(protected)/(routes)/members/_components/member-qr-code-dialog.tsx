@@ -74,7 +74,7 @@ export function MemberQrCodeDialog({
 
     const link = document.createElement("a");
     link.href = visibleQrDataUrl;
-    link.download = `${member.id}.png`;
+    link.download = `${buildQrFileBaseName(member.lastName, member.firstName, member.uniqueId ?? member.id)}.png`;
     link.click();
   };
 
@@ -136,4 +136,21 @@ export function MemberQrCodeDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function buildQrFileBaseName(lastName: string, firstName: string, idNumber: string) {
+  return [
+    sanitizeFileNameSegment(lastName),
+    sanitizeFileNameSegment(firstName),
+    sanitizeFileNameSegment(idNumber),
+  ]
+    .filter(Boolean)
+    .join("-");
+}
+
+function sanitizeFileNameSegment(value: string) {
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }

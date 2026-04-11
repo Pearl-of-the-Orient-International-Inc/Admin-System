@@ -8,11 +8,15 @@ export type MemberRecord = {
   memberId: string;
   uniqueId: string | null;
   avatarUrl: string | null;
+  firstName: string;
+  lastName: string;
   fullName: string;
+  memberTypeValue: MemberType;
   memberType: string;
   email: string;
   mobile: string;
   civilStatus: string;
+  branchOfServiceValues: string[];
   branchOfService: string;
   gender: Gender;
   status: MemberRecordStatus;
@@ -34,19 +38,47 @@ export const branchOfServiceOptions = [
   "Others",
 ];
 
+export const memberTypeFilterOptions = [
+  {
+    value: MemberType.ASSOCIATE_CHAPLAIN,
+    label: "Associate Chaplain",
+  },
+  {
+    value: MemberType.PROFESSIONAL_CHAPLAIN,
+    label: "Professional Chaplain",
+  },
+  {
+    value: MemberType.ORDAINED_AND_COMMISSIONED_PRACTITIONER,
+    label: "Ordained and Commissioned Practitioner",
+  },
+  {
+    value: MemberType.CERTIFIED_SPECIALIST_TRAINING_OFFICER_INSTRUCTOR,
+    label: "Certified Specialist Training Officer/Instructor",
+  },
+] as const;
+
 export function mapMemberToRecord(member: AdminMember): MemberRecord {
+  const branchOfServiceValues = getBranchOfServiceValues(member);
+
   return {
     id: member.uniqueId ?? member.id,
     memberId: member.id,
     uniqueId: member.uniqueId,
     avatarUrl: member.user.avatar,
+    firstName: member.firstName,
+    lastName: member.lastName,
     fullName: buildFullName(member),
+    memberTypeValue: member.memberType,
     memberType: formatMemberType(member.memberType),
     email: member.user.email,
     mobile: member.mobilePhoneNumber?.trim() || "Not provided",
     gender: member.gender,
     civilStatus: formatCivilStatus(member.civilStatus),
-    branchOfService: member.preferredBranchOther?.trim() || "Not specified",
+    branchOfServiceValues,
+    branchOfService:
+      branchOfServiceValues.length > 0
+        ? branchOfServiceValues.join(", ")
+        : "Not specified",
     status: getMemberRecordStatus(member),
     badgeNumber: member.badgeNumber,
     appliedAt: member.createdAt,
@@ -68,9 +100,15 @@ function formatMemberType(memberType: MemberType) {
 }
 
 function buildFullName(member: AdminMember) {
+  const middleInitial = member.middleInitial?.trim();
+
   return [
     member.firstName,
-    member.middleInitial?.trim(),
+    middleInitial
+      ? middleInitial.endsWith(".")
+        ? middleInitial
+        : `${middleInitial}.`
+      : null,
     member.lastName,
     member.extensionName?.trim(),
   ]
@@ -84,6 +122,18 @@ function formatCivilStatus(civilStatus: CivilStatus | null) {
   }
 
   return civilStatus.charAt(0) + civilStatus.slice(1).toLowerCase();
+}
+
+function getBranchOfServiceValues(member: AdminMember) {
+  const preferredBranches =
+    member.preferredBranches
+      ?.map((branch) => branch.title.trim())
+      .filter(Boolean) ?? [];
+  const otherBranch = member.preferredBranchOther?.trim();
+
+  return otherBranch
+    ? [...preferredBranches, otherBranch]
+    : preferredBranches;
 }
 
 function getMemberRecordStatus(member: AdminMember): MemberRecordStatus {

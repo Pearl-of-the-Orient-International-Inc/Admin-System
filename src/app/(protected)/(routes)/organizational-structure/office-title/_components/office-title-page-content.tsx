@@ -39,11 +39,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { CreateOfficeTitleButton } from "./create-office-title-button";
 import { OfficeTitlesDataTable } from "./office-titles-data-table";
+import { SummaryStatCard } from "@/components/SummaryStatCard";
 
 export function OfficeTitlePageContent() {
   const { toast } = useToast();
   const [archiveTargetId, setArchiveTargetId] = useState<string | null>(null);
-  const [statusTab, setStatusTab] = useState<"ALL" | "ACTIVE" | "INACTIVE">(
+  const [statusTab, setStatusTab] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [slotFilter, setSlotFilter] = useState<"ALL" | "LIMITED" | "UNLIMITED">(
     "ALL",
   );
 
@@ -93,16 +95,22 @@ export function OfficeTitlePageContent() {
     [officeTitles],
   );
   const filteredOfficeTitles = useMemo(() => {
+    let next = officeTitles;
+
     if (statusTab === "ACTIVE") {
-      return officeTitles.filter((officeTitle) => officeTitle.isActive);
+      next = next.filter((officeTitle) => officeTitle.isActive);
+    } else if (statusTab === "INACTIVE") {
+      next = next.filter((officeTitle) => !officeTitle.isActive);
     }
 
-    if (statusTab === "INACTIVE") {
-      return officeTitles.filter((officeTitle) => !officeTitle.isActive);
+    if (slotFilter === "LIMITED") {
+      next = next.filter((officeTitle) => officeTitle.maxSlots !== null);
+    } else if (slotFilter === "UNLIMITED") {
+      next = next.filter((officeTitle) => officeTitle.maxSlots === null);
     }
 
-    return officeTitles;
-  }, [officeTitles, statusTab]);
+    return next;
+  }, [officeTitles, slotFilter, statusTab]);
 
   const requestArchiveOfficeTitle = (id: string) => {
     setArchiveTargetId(id);
@@ -203,63 +211,47 @@ export function OfficeTitlePageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Total Titles
-                  </p>
-                  <span className="rounded-md bg-blue-700/10 p-1.5 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300">
-                    <BriefcaseBusiness className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">
-                  {countValue(totalOfficeTitles)}
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Active
-                  </p>
-                  <span className="rounded-md bg-emerald-700/10 p-1.5 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300">
-                    <UsersRound className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">
-                  {countValue(activeOfficeTitles)}
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Limited / Unlimited
-                  </p>
-                  <span className="rounded-md bg-violet-700/10 p-1.5 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300">
-                    <Layers3 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">
-                  {hasQueryError
+              <SummaryStatCard
+                label="Total Titles"
+                value={countValue(totalOfficeTitles)}
+                icon={<BriefcaseBusiness className="size-4" />}
+                accentClassName="bg-blue-700/10 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300"
+                active={statusTab === "ALL" && slotFilter === "ALL"}
+                onClick={() => {
+                  setStatusTab("ALL");
+                  setSlotFilter("ALL");
+                }}
+              />
+              <SummaryStatCard
+                label="Active"
+                value={countValue(activeOfficeTitles)}
+                icon={<UsersRound className="size-4" />}
+                accentClassName="bg-emerald-700/10 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300"
+                active={statusTab === "ACTIVE"}
+                onClick={() => setStatusTab("ACTIVE")}
+              />
+              <SummaryStatCard
+                label="Limited / Unlimited"
+                value={
+                  hasQueryError
                     ? "-"
-                    : `${limitedOfficeTitles} / ${unlimitedOfficeTitles}`}
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Levels / Sections
-                  </p>
-                  <span className="rounded-md bg-violet-700/10 p-1.5 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300">
-                    <Layers3 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">
-                  {hasQueryError ? "-" : `${uniqueLevels} / ${totalSections}`}
-                </p>
-              </div>
+                    : `${limitedOfficeTitles} / ${unlimitedOfficeTitles}`
+                }
+                description="Click to focus limited-slot office titles"
+                icon={<Layers3 className="size-4" />}
+                accentClassName="bg-violet-700/10 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300"
+                active={slotFilter === "LIMITED"}
+                onClick={() => setSlotFilter("LIMITED")}
+              />
+              <SummaryStatCard
+                label="Levels / Sections"
+                value={hasQueryError ? "-" : `${uniqueLevels} / ${totalSections}`}
+                description="Click to focus unlimited-slot office titles"
+                icon={<Layers3 className="size-4" />}
+                accentClassName="bg-violet-700/10 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300"
+                active={slotFilter === "UNLIMITED"}
+                onClick={() => setSlotFilter("UNLIMITED")}
+              />
             </CardContent>
           </Card>
 

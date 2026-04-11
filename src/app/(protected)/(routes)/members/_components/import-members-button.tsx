@@ -20,6 +20,8 @@ import { Gender, MemberType } from "@/enums";
 import type { CreateMemberByAdminRequest } from "@/features/members/member.types";
 import { useToast } from "@/hooks/use-toast";
 
+const BULK_TEMPLATE_PATH = "/print-templates/Pearl_Chaplaincy_Bulk_Template.xlsx";
+
 type ImportPreviewRow = {
   rowNumber: number;
   fullName: string;
@@ -43,7 +45,12 @@ const HEADER_ALIASES: Record<string, string[]> = {
   extensionName: ["extension", "extensionname", "extension_name", "suffix"],
   memberType: ["membertype", "member_type"],
   badgeNumber: ["badge", "badgenumber", "badge_number"],
-  applicationDate: ["applicationdate", "application_date", "applieddate"],
+  applicationDate: [
+    "applicationdate",
+    "application_date",
+    "applicationdatemmddyyyy",
+    "applieddate",
+  ],
   mobilePhoneNumber: [
     "contact",
     "contactnumber",
@@ -131,6 +138,9 @@ const normalizeOptional = (value: unknown) => {
   const normalized = String(value ?? "").trim();
   return normalized.length > 0 ? normalized : undefined;
 };
+
+const formatDateParts = (month: number, day: number, year: number) =>
+  `${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}/${year}`;
 
 const normalizePhone = (value: unknown) => {
   if (value === null || value === undefined || value === "") {
@@ -231,26 +241,87 @@ const formatMemberType = (memberType: MemberType) => {
   }
 };
 
+const toUtcDateOnlyIsoString = (year: number, month: number, day: number) => {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const isValidCalendarDate = (year: number, month: number, day: number) => {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
+
+const parseDatePartsFromText = (value: string) => {
+  const mmDdYyyyMatch = value.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (mmDdYyyyMatch) {
+    const month = Number(mmDdYyyyMatch[1]);
+    const day = Number(mmDdYyyyMatch[2]);
+    const year = Number(mmDdYyyyMatch[3]);
+
+    if (isValidCalendarDate(year, month, day)) {
+      return { year, month, day };
+    }
+
+    return null;
+  }
+
+  const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s.*)?$/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+
+    if (isValidCalendarDate(year, month, day)) {
+      return { year, month, day };
+    }
+
+    return null;
+  }
+
+  const nativeDate = new Date(value);
+  if (Number.isNaN(nativeDate.getTime())) {
+    return null;
+  }
+
+  const year = nativeDate.getFullYear();
+  const month = nativeDate.getMonth() + 1;
+  const day = nativeDate.getDate();
+
+  if (!isValidCalendarDate(year, month, day)) {
+    return null;
+  }
+
+  return { year, month, day };
+};
+
 const parseDateValue = (value: unknown): string | null => {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString();
+    return toUtcDateOnlyIsoString(
+      value.getUTCFullYear(),
+      value.getUTCMonth() + 1,
+      value.getUTCDate(),
+    );
   }
 
   if (typeof value === "number") {
     const parsed = XLSX.SSF.parse_date_code(value);
     if (!parsed) return null;
 
-    const date = new Date(
-      Date.UTC(parsed.y, parsed.m - 1, parsed.d, parsed.H, parsed.M, parsed.S),
-    );
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    return toUtcDateOnlyIsoString(parsed.y, parsed.m, parsed.d);
   }
 
   const normalized = String(value ?? "").trim();
   if (!normalized) return null;
 
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  const parsed = parseDatePartsFromText(normalized);
+  if (!parsed) return null;
+
+  return toUtcDateOnlyIsoString(parsed.year, parsed.month, parsed.day);
 };
 
 const getCellValue = (
@@ -266,6 +337,29 @@ const getCellValue = (
 
   const match = entries.find(([header]) => normalizeHeader(header) === alias);
   return match?.[1];
+};
+
+const formatDisplayDate = (value: string | null) => {
+  if (!value) return "";
+
+  const parsed = parseDatePartsFromText(value);
+  if (!parsed) return value;
+
+  return formatDateParts(parsed.month, parsed.day, parsed.year);
+};
+
+const buildTimestampedFileName = (fileName: string) => {
+  const extensionIndex = fileName.lastIndexOf(".");
+  const hasExtension = extensionIndex > 0;
+  const baseName = hasExtension ? fileName.slice(0, extensionIndex) : fileName;
+  const extension = hasExtension ? fileName.slice(extensionIndex) : "";
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")
+    .replace("T", "_")
+    .replace("Z", "");
+
+  return `${baseName}_${timestamp}${extension}`;
 };
 
 const buildPreviewRow = (
@@ -306,7 +400,14 @@ const buildPreviewRow = (
   }
 
   if (!dateOfBirth) {
-    errors.push("Date of birth is required and must be a valid date.");
+    errors.push("Date of birth is required and must use a valid MM/DD/YYYY date.");
+  }
+
+  if (
+    normalizeOptional(getCellValue(row, "applicationDate")) &&
+    !applicationDate
+  ) {
+    errors.push("Application date must use a valid MM/DD/YYYY date.");
   }
 
   const payload: CreateMemberByAdminRequest | null =
@@ -371,7 +472,7 @@ const buildPreviewRow = (
     email,
     memberType: formatMemberType(memberType),
     gender: gender === Gender.MALE ? "Male" : gender === Gender.FEMALE ? "Female" : "",
-    birthday: dateOfBirth ? dateOfBirth.slice(0, 10) : "",
+    birthday: formatDisplayDate(dateOfBirth),
     status: errors.length > 0 ? "failed" : "ready",
     errors,
     payload,
@@ -415,7 +516,10 @@ export function ImportMembersButton() {
   };
 
   const handleOpenPicker = () => {
-    inputRef.current?.click();
+    if (inputRef.current) {
+      inputRef.current.value = "";
+      inputRef.current.click();
+    }
   };
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -427,7 +531,7 @@ export function ImportMembersButton() {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, {
         type: "array",
-        cellDates: true,
+        cellDates: false,
       });
       const firstSheetName = workbook.SheetNames[0];
       const firstSheet = workbook.Sheets[firstSheetName];
@@ -441,7 +545,8 @@ export function ImportMembersButton() {
         {
           header: 1,
           defval: "",
-          raw: true,
+          raw: false,
+          dateNF: "mm/dd/yyyy",
         },
       );
 
@@ -480,7 +585,7 @@ export function ImportMembersButton() {
         buildPreviewRow(row, index + 3),
       );
 
-      setFileName(file.name);
+      setFileName(buildTimestampedFileName(file.name));
       setPreviewRows(mappedRows);
 
       toast({
@@ -500,6 +605,7 @@ export function ImportMembersButton() {
       resetState();
     } finally {
       setIsParsing(false);
+      event.target.value = "";
     }
   };
 
@@ -566,7 +672,8 @@ export function ImportMembersButton() {
                 <div className="space-y-1">
                   <p className="font-medium text-foreground">Spreadsheet Upload</p>
                   <p className="text-sm text-muted-foreground">
-                    This importer supports your current chaplaincy workbook layout.
+                    Download the official bulk template, complete it, then upload
+                    the finished file here. Date columns should use MM/DD/YYYY.
                   </p>
                   {isImportRunning ? (
                     <p className="text-sm text-amber-600">
@@ -576,22 +683,30 @@ export function ImportMembersButton() {
                   ) : null}
                   {fileName ? (
                     <p className="text-sm text-foreground">
-                      Selected file: <span className="font-medium">{fileName}</span>
+                      Queued as: <span className="font-medium">{fileName}</span>
                     </p>
                   ) : null}
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={handleOpenPicker}
-                  disabled={isParsing || isStartingImport || isImportRunning}
-                >
-                  {isParsing ? (
-                    <LoaderCircle className="size-4 animate-spin" />
-                  ) : (
-                    <Upload className="size-4" />
-                  )}
-                  {isParsing ? "Parsing file..." : "Choose file"}
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button variant="outline" asChild>
+                    <a href={BULK_TEMPLATE_PATH} download>
+                      <FileSpreadsheet className="size-4" />
+                      Download Template
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleOpenPicker}
+                    disabled={isParsing || isStartingImport || isImportRunning}
+                  >
+                    {isParsing ? (
+                      <LoaderCircle className="size-4 animate-spin" />
+                    ) : (
+                      <Upload className="size-4" />
+                    )}
+                    {isParsing ? "Parsing file..." : "Choose file"}
+                  </Button>
+                </div>
               </div>
             </div>
 

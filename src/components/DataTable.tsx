@@ -8,6 +8,7 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type OnChangeFn,
   type Row,
   type RowSelectionState,
   type SortingState,
@@ -18,7 +19,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Download,
   LoaderCircleIcon,
   SearchIcon,
   Trash2,
@@ -42,11 +42,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { IconFileExport } from "@tabler/icons-react";
 
 type GlobalDataTableProps<TData extends object, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   cellAction?: (row: Row<TData>) => React.ReactNode;
+  toolbarActions?: ReactNode;
+  hideSearch?: boolean;
+  hideFooter?: boolean;
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
+  manualSorting?: boolean;
   onDeleteSelected?: (rows: TData[]) => void;
   renderSelectedActions?: (
     rows: TData[],
@@ -62,6 +69,12 @@ export function GlobalDataTable<TData extends object, TValue>({
   columns,
   data,
   cellAction,
+  toolbarActions,
+  hideSearch = false,
+  hideFooter = false,
+  sorting: controlledSorting,
+  onSortingChange: controlledOnSortingChange,
+  manualSorting = false,
   onDeleteSelected,
   renderSelectedActions,
   filterPlaceholder = "Filter data...",
@@ -69,11 +82,13 @@ export function GlobalDataTable<TData extends object, TValue>({
   exportFileName = "table-export",
   pageSizeOptions = [10, 20, 25, 30, 40, 50],
 }: GlobalDataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [internalSorting, setInternalSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const sorting = controlledSorting ?? internalSorting;
+  const onSortingChange = controlledOnSortingChange ?? setInternalSorting;
 
   useEffect(() => {
     if (searchValue === globalFilter) {
@@ -147,13 +162,14 @@ export function GlobalDataTable<TData extends object, TValue>({
         pageSize: pageSizeOptions[0] ?? 10,
       },
     },
-    onSortingChange: setSorting,
+    onSortingChange,
+    manualSorting,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: manualSorting ? undefined : getSortedRowModel(),
+    getPaginationRowModel: hideFooter ? undefined : getPaginationRowModel(),
     globalFilterFn: (row, _columnId, filterValue) => {
       const search = String(filterValue).toLowerCase().trim();
       if (!search) return true;
@@ -207,44 +223,49 @@ export function GlobalDataTable<TData extends object, TValue>({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="relative">
-          <div className="text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50">
-            <SearchIcon className="size-4" />
-            <span className="sr-only">Search</span>
-          </div>
-          <Input
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder={filterPlaceholder}
-            className="lg:w-110 peer px-9 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none"
-          />
-          {isSearching && (
-            <div className="text-muted-foreground pointer-events-none absolute inset-y-0 right-0 flex items-center justify-center pr-3 peer-disabled:opacity-50">
-              <LoaderCircleIcon className="size-4 animate-spin" />
-              <span className="sr-only">Loading...</span>
+        {hideSearch ? <div /> : (
+          <div className="relative">
+            <div className="text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50">
+              <SearchIcon className="size-4" />
+              <span className="sr-only">Search</span>
             </div>
-          )}
-        </div>
+            <Input
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={filterPlaceholder}
+              className="lg:w-110 peer px-9 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none"
+            />
+            {isSearching && (
+              <div className="text-muted-foreground pointer-events-none absolute inset-y-0 right-0 flex items-center justify-center pr-3 peer-disabled:opacity-50">
+                <LoaderCircleIcon className="size-4 animate-spin" />
+                <span className="sr-only">Loading...</span>
+              </div>
+            )}
+          </div>
+        )}
 
-        {selectedRowsData.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportSelected}>
-              <Download className="size-4" />
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
+          {toolbarActions}
+          {selectedRowsData.length > 0 && (
+            <div className="flex items-center gap-2">
+            <Button variant="outline" size="xs" onClick={handleExportSelected}>
+              <IconFileExport className="size-3.5" />
               Export CSV
             </Button>
             {renderSelectedActions?.(selectedRowsData, { clearSelection })}
             {!renderSelectedActions && onDeleteSelected ? (
               <Button
                 variant="destructive"
-                size="sm"
+                size="xs"
                 onClick={handleDeleteSelected}
               >
-                <Trash2 className="size-4" />
+                <Trash2 className="size-3.5" />
                 Delete
               </Button>
             ) : null}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -300,81 +321,83 @@ export function GlobalDataTable<TData extends object, TValue>({
         </Table>
       </div>
 
-      <div className="flex flex-col gap-3 px-1 md:flex-row md:items-center md:justify-between">
-        <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+      {hideFooter ? null : (
+        <div className="flex flex-col gap-3 px-1 md:flex-row md:items-center md:justify-between">
+          <div className="text-muted-foreground flex-1 text-sm">
+            {table.getFilteredSelectedRowModel().rows.length} of{" "}
+            {table.getFilteredRowModel().rows.length} row(s) selected.
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 md:gap-6">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">Rows per page</p>
+              <Select
+                value={`${table.getState().pagination.pageSize}`}
+                onValueChange={(value) => table.setPageSize(Number(value))}
+              >
+                <SelectTrigger className="h-8 w-20">
+                  <SelectValue
+                    placeholder={table.getState().pagination.pageSize}
+                  />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {pageSizeOptions.map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex w-27.5 items-center justify-center text-sm font-medium">
+              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="hidden lg:flex"
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <span className="sr-only">Go to first page</span>
+                <ChevronsLeft className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <span className="sr-only">Go to previous page</span>
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <span className="sr-only">Go to next page</span>
+                <ChevronRight className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="hidden lg:flex"
+                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                disabled={!table.getCanNextPage()}
+              >
+                <span className="sr-only">Go to last page</span>
+                <ChevronsRight className="size-4" />
+              </Button>
+            </div>
+          </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3 md:gap-6">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">Rows per page</p>
-            <Select
-              value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger className="h-8 w-20">
-                <SelectValue
-                  placeholder={table.getState().pagination.pageSize}
-                />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {pageSizeOptions.map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex w-27.5 items-center justify-center text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="hidden lg:flex"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <span className="sr-only">Go to first page</span>
-              <ChevronsLeft className="size-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <span className="sr-only">Go to previous page</span>
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <span className="sr-only">Go to next page</span>
-              <ChevronRight className="size-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="hidden lg:flex"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              <span className="sr-only">Go to last page</span>
-              <ChevronsRight className="size-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

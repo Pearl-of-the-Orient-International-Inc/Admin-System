@@ -19,6 +19,7 @@ export interface BranchServiceResource {
   title: string;
   description: string;
   sections: BranchSection[];
+  memberCount?: number;
   memberId?: string | null;
   createdAt: string;
   updatedAt: string;

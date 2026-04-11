@@ -49,6 +49,10 @@ const data = {
           title: "Pending Applications",
           url: "/members/pending",
         },
+        {
+          title: "Renewal Members",
+          url: "/members/renewal",
+        },
       ],
     },
     {

@@ -7,6 +7,7 @@ export const emptyFormState: ApplicationFormState = {
   lastName: "",
   extensionName: "",
   memberType: MemberType.ASSOCIATE_CHAPLAIN,
+  badgeNumber: "",
   emailAddress: "",
   address: "",
   phoneNumber: "",

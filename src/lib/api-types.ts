@@ -206,6 +206,63 @@ export interface AdminMember {
     contactNumber: string;
     order: number;
   }[];
+  applicantRequirements?: {
+    id: string;
+    type: string;
+    reviewStatus: string;
+    fileUrl: string;
+    fileName: string | null;
+    mimeType: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+  onboardingProgress?: {
+    currentStep: string;
+    preOrientationCompletedLessonIds: number[];
+    preOrientationCompletedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  paymentCheckout?: {
+    id: string;
+    paymentMethod: string;
+    proofOfPaymentUrl: string | null;
+    isPromissoryNote: boolean;
+    promissoryNoteUrl: string | null;
+    submittedAt: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  onlineInterviewAppointment?: {
+    id: string;
+    interviewerId: string;
+    interviewerName: string;
+    day: string;
+    timeSlot: string;
+    zoomLink: string;
+    meetingId: string | null;
+    passcode: string | null;
+    confirmedAt: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  idGenerationAsset?: {
+    id: string;
+    profileUrl: string;
+    qrCodeUrl: string;
+    certificateUrl: string;
+    generatedAt: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  chaplaincyTrainingProgress?: {
+    id: string;
+    completedLessonIds: number[];
+    essayAnswers: unknown;
+    completedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
   preferredBranches?: {
     id: string;
     title: string;

@@ -48,12 +48,14 @@ const MEMBER_TYPE_OPTIONS: {
   {
     value: MemberType.ORDAINED_AND_COMMISSIONED_PRACTITIONER,
     label: "Ordained and Commissioned Practitioner",
-    description: "Tracks members who reached ordained and commissioned standing.",
+    description:
+      "Tracks members who reached ordained and commissioned standing.",
   },
   {
     value: MemberType.CERTIFIED_SPECIALIST_TRAINING_OFFICER_INSTRUCTOR,
     label: "Certified Specialist Training Officer/Instructor",
-    description: "For members qualified to lead or facilitate specialist training.",
+    description:
+      "For members qualified to lead or facilitate specialist training.",
   },
 ];
 
@@ -73,7 +75,8 @@ function parseLocationSummary(
   const regions = locationCatalog.getRegions();
   const region = regions.find(
     (item) =>
-      normalize(item.region_description) === normalize(parts[parts.length - 1]) ||
+      normalize(item.region_description) ===
+        normalize(parts[parts.length - 1]) ||
       normalize(item.region_name) === normalize(parts[parts.length - 1]),
   );
   if (!region) return EMPTY_LOCATION_SELECTION;
@@ -112,7 +115,10 @@ function parseLocationSummary(
 
   const municipality = locationCatalog
     .getMunicipalities(province.province_id)
-    .find((item) => normalize(item.municipality_name) === normalize(municipalityPart));
+    .find(
+      (item) =>
+        normalize(item.municipality_name) === normalize(municipalityPart),
+    );
   if (!municipality) {
     return {
       regionId: region.region_id,
@@ -167,7 +173,8 @@ function buildLocationSummary(
       ? null
       : (locationCatalog
           .getMunicipalities(selection.provinceId)
-          .find((item) => item.municipality_id === selection.municipalityId) ?? null);
+          .find((item) => item.municipality_id === selection.municipalityId) ??
+        null);
 
   const barangay =
     selection.municipalityId === null || selection.barangayId === null
@@ -197,9 +204,13 @@ export function StepPersonalDetails({
   emailMode?: "editable" | "locked";
   emailHelperText?: string;
 }) {
-  const regions = useMemo(() => locationCatalog.getRegions(), [locationCatalog]);
-  const [selectedLocation, setSelectedLocation] =
-    useState<LocationSelection>(EMPTY_LOCATION_SELECTION);
+  const regions = useMemo(
+    () => locationCatalog.getRegions(),
+    [locationCatalog],
+  );
+  const [selectedLocation, setSelectedLocation] = useState<LocationSelection>(
+    EMPTY_LOCATION_SELECTION,
+  );
   const [hasTouchedLocation, setHasTouchedLocation] = useState(false);
 
   const parsedLocation = useMemo(
@@ -224,8 +235,22 @@ export function StepPersonalDetails({
   const applyLocationSelection = (next: LocationSelection) => {
     setHasTouchedLocation(true);
     setSelectedLocation(next);
-    updateFieldAction("regionProvince", buildLocationSummary(next, locationCatalog));
+    updateFieldAction(
+      "regionProvince",
+      buildLocationSummary(next, locationCatalog),
+    );
   };
+
+  const handleEmailChange = (value: string) => {
+    // Always allow typing
+    updateFieldAction("emailAddress", value);
+  };
+
+  const isInvalidDomain =
+    form.emailAddress &&
+    !/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(form.emailAddress);
+
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="space-y-4">
@@ -234,7 +259,10 @@ export function StepPersonalDetails({
           <Select
             value={form.memberType}
             onValueChange={(value) =>
-              updateFieldAction("memberType", value as ApplicationFormState["memberType"])
+              updateFieldAction(
+                "memberType",
+                value as ApplicationFormState["memberType"],
+              )
             }
           >
             <SelectTrigger className="w-full">
@@ -250,18 +278,31 @@ export function StepPersonalDetails({
           </Select>
           <p className="text-muted-foreground text-xs">
             {
-              MEMBER_TYPE_OPTIONS.find((option) => option.value === form.memberType)
-                ?.description
+              MEMBER_TYPE_OPTIONS.find(
+                (option) => option.value === form.memberType,
+              )?.description
             }
           </p>
         </div>
+      </Field>
+
+      <Field label="Badge number">
+        <Input
+          value={form.badgeNumber}
+          onChange={(event) =>
+            updateFieldAction("badgeNumber", event.target.value)
+          }
+          placeholder="e.g. 2026-001"
+        />
       </Field>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.65fr)]">
         <Field label="First name" required>
           <Input
             value={form.firstName}
-            onChange={(event) => updateFieldAction("firstName", event.target.value)}
+            onChange={(event) =>
+              updateFieldAction("firstName", event.target.value)
+            }
             placeholder="e.g. Juan"
           />
         </Field>
@@ -269,7 +310,10 @@ export function StepPersonalDetails({
           <Input
             value={form.middleInitial}
             onChange={(event) =>
-              updateFieldAction("middleInitial", event.target.value.toUpperCase().slice(0, 1))
+              updateFieldAction(
+                "middleInitial",
+                event.target.value.toUpperCase().slice(0, 1),
+              )
             }
             placeholder="e.g. R"
             maxLength={1}
@@ -278,14 +322,18 @@ export function StepPersonalDetails({
         <Field label="Last name" required>
           <Input
             value={form.lastName}
-            onChange={(event) => updateFieldAction("lastName", event.target.value)}
+            onChange={(event) =>
+              updateFieldAction("lastName", event.target.value)
+            }
             placeholder="e.g. Dela Cruz"
           />
         </Field>
         <Field label="Extension name">
           <Input
             value={form.extensionName}
-            onChange={(event) => updateFieldAction("extensionName", event.target.value)}
+            onChange={(event) =>
+              updateFieldAction("extensionName", event.target.value)
+            }
             placeholder="e.g. Jr., Sr., III"
           />
         </Field>
@@ -297,10 +345,8 @@ export function StepPersonalDetails({
             <Input
               type="email"
               value={form.emailAddress}
-              onChange={(event) =>
-                updateFieldAction("emailAddress", event.target.value)
-              }
-              placeholder="you@example.com"
+              onChange={(event) => handleEmailChange(event.target.value)}
+              placeholder="you@gmail.com"
               readOnly={emailMode === "locked"}
               aria-readonly={emailMode === "locked"}
               className={
@@ -309,7 +355,11 @@ export function StepPersonalDetails({
                   : undefined
               }
             />
-            {emailHelperText ? (
+            {isInvalidDomain ? (
+              <p className="text-red-500 text-xs">
+                Only @gmail.com email addresses are allowed
+              </p>
+            ) : emailHelperText ? (
               <p className="text-muted-foreground text-xs">{emailHelperText}</p>
             ) : null}
           </div>
@@ -359,7 +409,10 @@ export function StepPersonalDetails({
           <Select
             value={form.gender}
             onValueChange={(value) =>
-              updateFieldAction("gender", value as ApplicationFormState["gender"])
+              updateFieldAction(
+                "gender",
+                value as ApplicationFormState["gender"],
+              )
             }
           >
             <SelectTrigger className="w-full">
@@ -375,7 +428,9 @@ export function StepPersonalDetails({
         <Field label="Nationality">
           <Input
             value={form.nationality}
-            onChange={(event) => updateFieldAction("nationality", event.target.value)}
+            onChange={(event) =>
+              updateFieldAction("nationality", event.target.value)
+            }
             placeholder="e.g. Filipino"
           />
         </Field>
@@ -386,7 +441,10 @@ export function StepPersonalDetails({
           <Input
             type="date"
             value={form.birthday}
-            onChange={(event) => updateFieldAction("birthday", event.target.value)}
+            max={today}
+            onChange={(event) =>
+              updateFieldAction("birthday", event.target.value)
+            }
           />
         </Field>
         <Field label="Age" required>
@@ -424,7 +482,10 @@ export function StepPersonalDetails({
               </SelectTrigger>
               <SelectContent>
                 {regions.map((region) => (
-                  <SelectItem key={region.region_id} value={String(region.region_id)}>
+                  <SelectItem
+                    key={region.region_id}
+                    value={String(region.region_id)}
+                  >
                     {region.region_description}
                   </SelectItem>
                 ))}
@@ -527,12 +588,16 @@ export function StepPersonalDetails({
 
           <Input
             value={form.address}
-            onChange={(event) => updateFieldAction("address", event.target.value)}
+            onChange={(event) =>
+              updateFieldAction("address", event.target.value)
+            }
             placeholder="House no., street, subdivision / village"
           />
 
           <Input
-            value={[form.address, form.regionProvince].filter(Boolean).join(", ")}
+            value={[form.address, form.regionProvince]
+              .filter(Boolean)
+              .join(", ")}
             readOnly
             aria-readonly="true"
             placeholder="Location summary will be auto-generated"

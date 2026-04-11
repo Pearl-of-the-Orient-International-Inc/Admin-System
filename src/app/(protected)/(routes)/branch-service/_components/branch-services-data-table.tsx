@@ -52,9 +52,7 @@ export function BranchServicesDataTable({
             <ArrowDownUp className="size-4" />
           </Button>
         ),
-        cell: ({ row }) => (
-          <p className="font-medium">{row.original.title}</p>
-        ),
+        cell: ({ row }) => <p className="font-medium">{row.original.title}</p>,
       },
       {
         accessorKey: "description",
@@ -73,6 +71,26 @@ export function BranchServicesDataTable({
             {row.original.sections?.length ?? 0} section(s)
           </Badge>
         ),
+      },
+      {
+        accessorKey: "memberCount",
+        header: "Members",
+        cell: ({ row }) => {
+          const memberCount = row.original.memberCount ?? 0;
+          return (
+            <Badge
+              variant={
+                memberCount === 0
+                  ? "error"
+                  : memberCount >= 10
+                    ? "success"
+                    : "info"
+              }
+            >
+              {memberCount} member{memberCount !== 1 && "s"}
+            </Badge>
+          );
+        },
       },
       {
         accessorKey: "updatedAt",
@@ -115,7 +133,8 @@ export function BranchServicesDataTable({
                   toast({
                     variant: "error",
                     title: "Copy failed",
-                    description: "Unable to copy Branch Service ID to clipboard.",
+                    description:
+                      "Unable to copy Branch Service ID to clipboard.",
                   });
                 }
               }}
@@ -149,7 +168,9 @@ export function BranchServicesDataTable({
       filterPlaceholder="Search title, description, section count, or date..."
       emptyMessage="No branch services found."
       exportFileName="branch-services"
-      onDeleteSelected={(rows) => onDeleteBranchServices(rows.map((row) => row.id))}
+      onDeleteSelected={(rows) =>
+        onDeleteBranchServices(rows.map((row) => row.id))
+      }
     />
   );
 }

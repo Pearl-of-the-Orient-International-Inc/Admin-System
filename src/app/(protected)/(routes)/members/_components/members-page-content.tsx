@@ -2,10 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { SortingState } from "@tanstack/react-table";
 import QRCode from "qrcode";
+import type { DateRange } from "react-day-picker";
+import { endOfDay, format, isAfter, isBefore, startOfDay } from "date-fns";
 import {
   BriefcaseBusiness,
+  CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   CheckCircle2,
   Clock3,
   Edit3,
@@ -17,9 +25,11 @@ import {
   QrCode,
   RotateCcw,
   Rows3,
+  SearchIcon,
   ShieldAlert,
   ShieldMinus,
   Users,
+  X,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -40,6 +50,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,31 +58,57 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ImportMembersButton } from "./import-members-button";
 import { MemberOfficeAssignmentDialog } from "./member-office-assignment-dialog";
+import { MemberDetailsSheet } from "./member-details-sheet";
 import { MemberQrCodeDialog } from "./member-qr-code-dialog";
-import { mapMemberToRecord, type MemberRecord } from "./members-data";
+import {
+  branchOfServiceOptions,
+  mapMemberToRecord,
+  memberTypeFilterOptions,
+  type MemberRecord,
+} from "./members-data";
 import { MembersDataTable } from "./members-data-table";
 import { PageEmptyState } from "@/components/PageEmptyState";
 import { PageErrorState } from "@/components/PageErrorState";
 import { PageLoadingState } from "@/components/PageLoadingState";
 import { Button } from "@/components/ui/button";
+import { SummaryStatCard } from "@/components/SummaryStatCard";
 import {
   useArchiveMemberMutation,
   useMembersQuery,
   useRetrieveMemberMutation,
+  useUpdateMemberMutation,
+  useUpdateMemberStatusMutation,
 } from "@/features/members/member.hooks";
 import { useToast } from "@/hooks/use-toast";
+import { MemberStatus, MemberType } from "@/enums";
+import { mapAdminMemberToUpdatePayload } from "./member-form-mappers";
 
 type MembersViewMode = "grid" | "table";
 type StatusTabValue = "ALL" | "PENDING" | "APPROVED" | "REJECTED" | "ARCHIVED";
 type MemberArchiveAction = "archive" | "retrieve";
+const NO_BRANCHES_FILTER_VALUE = "Not Specified";
 
 export function MembersPageContent() {
   const router = useRouter();
-  const [viewMode, setViewMode] = useState<MembersViewMode>("grid");
+  const [viewMode, setViewMode] = useState<MembersViewMode>("table");
   const [statusTab, setStatusTab] = useState<StatusTabValue>("ALL");
   const [pendingMemberAction, setPendingMemberAction] = useState<{
     type: MemberArchiveAction;
@@ -83,6 +120,17 @@ export function MembersPageContent() {
   const [qrDialogMember, setQrDialogMember] = useState<MemberRecord | null>(
     null,
   );
+  const [detailsMemberId, setDetailsMemberId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [memberTypeFilter, setMemberTypeFilter] = useState<string>("all");
+  const [branchOfServiceFilter, setBranchOfServiceFilter] =
+    useState<string>("all");
+  const [applicationDateRange, setApplicationDateRange] = useState<
+    DateRange | undefined
+  >();
+  const [pageSize, setPageSize] = useState(12);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [tableSorting, setTableSorting] = useState<SortingState>([]);
   const { toast } = useToast();
   const { data, isLoading, isError, error } = useMembersQuery({
     limit: 100,
@@ -90,7 +138,15 @@ export function MembersPageContent() {
   });
   const archiveMemberMutation = useArchiveMemberMutation();
   const retrieveMemberMutation = useRetrieveMemberMutation();
+  const updateMemberMutation = useUpdateMemberMutation();
+  const updateMemberStatusMutation = useUpdateMemberStatusMutation();
   const [isBatchQrPending, setIsBatchQrPending] = useState(false);
+  const [updatingMemberTypeId, setUpdatingMemberTypeId] = useState<
+    string | null
+  >(null);
+  const [updatingMemberStatusId, setUpdatingMemberStatusId] = useState<
+    string | null
+  >(null);
 
   const members = useMemo(
     () => data?.data.map(mapMemberToRecord) ?? [],
@@ -117,7 +173,13 @@ export function MembersPageContent() {
   );
   const filteredMembers = useMemo(() => {
     if (statusTab === "ALL") {
-      return members;
+      return applyMembersFilters(
+        members,
+        searchQuery,
+        memberTypeFilter,
+        branchOfServiceFilter,
+        applicationDateRange,
+      );
     }
 
     const statusByTab: Record<
@@ -130,8 +192,258 @@ export function MembersPageContent() {
       ARCHIVED: "Archived",
     };
 
-    return members.filter((member) => member.status === statusByTab[statusTab]);
-  }, [members, statusTab]);
+    return applyMembersFilters(
+      members.filter((member) => member.status === statusByTab[statusTab]),
+      searchQuery,
+      memberTypeFilter,
+      branchOfServiceFilter,
+      applicationDateRange,
+    );
+  }, [
+    applicationDateRange,
+    branchOfServiceFilter,
+    memberTypeFilter,
+    members,
+    searchQuery,
+    statusTab,
+  ]);
+
+  const visibleMemberTypeOptions = useMemo(
+    () =>
+      memberTypeFilterOptions.filter((option) =>
+        members.some((member) => member.memberTypeValue === option.value),
+      ),
+    [members],
+  );
+  const visibleBranchOfServiceOptions = useMemo(
+    () =>
+      branchOfServiceOptions.filter((option) =>
+        members.some((member) => member.branchOfServiceValues.includes(option)),
+      ),
+    [members],
+  );
+  const hasMembersWithoutBranches = useMemo(
+    () => members.some((member) => member.branchOfServiceValues.length === 0),
+    [members],
+  );
+
+  const hasActiveFilters =
+    branchOfServiceFilter !== "all" ||
+    memberTypeFilter !== "all" ||
+    Boolean(applicationDateRange?.from || applicationDateRange?.to);
+  const applicationDateFromTime = applicationDateRange?.from?.getTime();
+  const applicationDateToTime = applicationDateRange?.to?.getTime();
+
+  const sortedMembers = useMemo(
+    () => sortMembers(filteredMembers, tableSorting),
+    [filteredMembers, tableSorting],
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sortedMembers.length / pageSize));
+  const currentPage = Math.min(pageIndex + 1, totalPages);
+  const paginatedMembers = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return sortedMembers.slice(start, start + pageSize);
+  }, [pageIndex, pageSize, sortedMembers]);
+
+  useEffect(() => {
+    setPageIndex((current) => Math.min(current, totalPages - 1));
+  }, [totalPages]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [
+    applicationDateFromTime,
+    applicationDateToTime,
+    branchOfServiceFilter,
+    memberTypeFilter,
+    searchQuery,
+    statusTab,
+    tableSorting,
+  ]);
+
+  const membersToolbar = (
+    <div className="flex flex-col gap-3 mb-5 md:flex-row md:items-center md:justify-between">
+      <div className="relative">
+        <div className="text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3">
+          <SearchIcon className="size-4" />
+          <span className="sr-only">Search</span>
+        </div>
+        <Input
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Search member name, email, branch, or status..."
+          className="lg:w-90 px-9 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none"
+        />
+      </div>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
+        <Select value={memberTypeFilter} onValueChange={setMemberTypeFilter}>
+          <SelectTrigger className="w-full lg:w-40">
+            <SelectValue placeholder="Filter by member type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            {visibleMemberTypeOptions.map((memberType) => (
+              <SelectItem key={memberType.value} value={memberType.value}>
+                {memberType.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={branchOfServiceFilter}
+          onValueChange={setBranchOfServiceFilter}
+        >
+          <SelectTrigger className="w-full lg:w-40">
+            <SelectValue placeholder="Filter by branch of service" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All branches</SelectItem>
+            {hasMembersWithoutBranches ? (
+              <SelectItem value={NO_BRANCHES_FILTER_VALUE}>
+                No branches
+              </SelectItem>
+            ) : null}
+            {visibleBranchOfServiceOptions.map((branch) => (
+              <SelectItem key={branch} value={branch}>
+                {branch}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal md:w-60",
+                !applicationDateRange?.from && "text-muted-foreground",
+              )}
+            >
+              <CalendarIcon className="size-4" />
+              {applicationDateRange?.from
+                ? applicationDateRange.to
+                  ? `${format(applicationDateRange.from, "MMM d, yyyy")} - ${format(
+                      applicationDateRange.to,
+                      "MMM d, yyyy",
+                    )}`
+                  : format(applicationDateRange.from, "MMM d, yyyy")
+                : "Filter by application date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="range"
+              selected={applicationDateRange}
+              onSelect={setApplicationDateRange}
+              numberOfMonths={2}
+              defaultMonth={applicationDateRange?.from}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {hasActiveFilters || searchQuery.trim() ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchQuery("");
+              setMemberTypeFilter("all");
+              setBranchOfServiceFilter("all");
+              setApplicationDateRange(undefined);
+            }}
+          >
+            <X className="size-4" />
+            Clear filters
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  const paginationControls = (
+    <div className="flex flex-col gap-3 mt-5 px-1 md:flex-row md:items-center md:justify-between">
+      <div className="text-muted-foreground flex-1 text-sm">
+        Showing {sortedMembers.length === 0 ? 0 : pageIndex * pageSize + 1}-
+        {Math.min((pageIndex + 1) * pageSize, sortedMembers.length)} of{" "}
+        {sortedMembers.length} member(s).
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 md:gap-6">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium">Rows per page</p>
+          <Select
+            value={`${pageSize}`}
+            onValueChange={(value) => {
+              setPageSize(Number(value));
+              setPageIndex(0);
+            }}
+          >
+            <SelectTrigger className="h-8 w-20">
+              <SelectValue placeholder={pageSize} />
+            </SelectTrigger>
+            <SelectContent side="top">
+              {[12, 24, 36, 48].map((size) => (
+                <SelectItem key={size} value={`${size}`}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex w-27.5 items-center justify-center text-sm font-medium">
+          Page {currentPage} of {totalPages}
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="hidden lg:flex"
+            onClick={() => setPageIndex(0)}
+            disabled={currentPage <= 1}
+          >
+            <span className="sr-only">Go to first page</span>
+            <ChevronsLeft className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={() => setPageIndex((value) => Math.max(0, value - 1))}
+            disabled={currentPage <= 1}
+          >
+            <span className="sr-only">Go to previous page</span>
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={() =>
+              setPageIndex((value) => Math.min(totalPages - 1, value + 1))
+            }
+            disabled={currentPage >= totalPages}
+          >
+            <span className="sr-only">Go to next page</span>
+            <ChevronRight className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="hidden lg:flex"
+            onClick={() => setPageIndex(totalPages - 1)}
+            disabled={currentPage >= totalPages}
+          >
+            <span className="sr-only">Go to last page</span>
+            <ChevronsRight className="size-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
   const handleArchiveMembers = async (memberIds: string[]) => {
     try {
@@ -214,7 +526,11 @@ export function MembersPageContent() {
 
         const link = document.createElement("a");
         link.href = qrDataUrl;
-        link.download = `${member.id}.png`;
+        link.download = `${buildQrFileBaseName(
+          member.lastName,
+          member.firstName,
+          member.uniqueId ?? member.id,
+        )}.png`;
         link.click();
 
         await new Promise((resolve) => window.setTimeout(resolve, 150));
@@ -247,20 +563,7 @@ export function MembersPageContent() {
   };
 
   const handleViewDetails = (member: MemberRecord) => {
-    if (!member.uniqueId) {
-      toast({
-        variant: "warning",
-        title: "Profile unavailable",
-        description: `${member.fullName} does not have a public unique ID yet.`,
-      });
-      return;
-    }
-
-    window.open(
-      `https://pearlchaplaincy.org/profile/${encodeURIComponent(member.uniqueId)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    setDetailsMemberId(member.memberId);
   };
 
   const handleEditDetails = (member: MemberRecord) => {
@@ -281,6 +584,116 @@ export function MembersPageContent() {
 
   const handleGenerateQrCode = (member: MemberRecord) => {
     setQrDialogMember(member);
+  };
+
+  const handleUpdateMemberType = async (
+    member: MemberRecord,
+    memberType: MemberType,
+  ) => {
+    const sourceMember = data?.data.find((item) => item.id === member.memberId);
+
+    if (!sourceMember) {
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "The selected member record could not be found.",
+      });
+      return;
+    }
+
+    if (sourceMember.memberType === memberType) {
+      return;
+    }
+
+    try {
+      setUpdatingMemberTypeId(member.memberId);
+      await updateMemberMutation.mutateAsync({
+        memberId: member.memberId,
+        payload: {
+          ...mapAdminMemberToUpdatePayload(sourceMember),
+          memberType,
+        },
+      });
+      toast({
+        variant: "success",
+        title: "Member type updated",
+        description: `${member.fullName} is now set to ${formatMemberTypeLabel(memberType)}.`,
+      });
+    } catch {
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "Unable to update the member type right now.",
+      });
+      throw new Error("Unable to update member type.");
+    } finally {
+      setUpdatingMemberTypeId(null);
+    }
+  };
+
+  const handleUpdateMemberStatus = async (
+    member: MemberRecord,
+    status: "Approved" | "Pending" | "Rejected" | "Archived",
+  ) => {
+    const sourceMember = data?.data.find((item) => item.id === member.memberId);
+
+    if (!sourceMember) {
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "The selected member record could not be found.",
+      });
+      return;
+    }
+
+    if (status === "Pending") {
+      toast({
+        variant: "warning",
+        title: "Pending is unavailable",
+        description:
+          "There is no admin action available to move a member back to pending.",
+      });
+      return;
+    }
+
+    try {
+      setUpdatingMemberStatusId(member.memberId);
+
+      if (status === "Archived") {
+        if (!sourceMember.isActive) {
+          return;
+        }
+
+        await archiveMemberMutation.mutateAsync(member.memberId);
+      } else {
+        if (!sourceMember.isActive) {
+          await retrieveMemberMutation.mutateAsync(member.memberId);
+        }
+
+        await updateMemberStatusMutation.mutateAsync({
+          memberId: member.memberId,
+          status:
+            status === "Approved"
+              ? MemberStatus.APPROVED
+              : MemberStatus.REJECTED,
+        });
+      }
+
+      toast({
+        variant: "success",
+        title: "Member status updated",
+        description: `${member.fullName} is now set to ${status}.`,
+      });
+    } catch {
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "Unable to update the member status right now.",
+      });
+      throw new Error("Unable to update member status.");
+    } finally {
+      setUpdatingMemberStatusId(null);
+    }
   };
 
   const handleRequestBulkMemberAction = (memberIds: string[]) => {
@@ -357,66 +770,42 @@ export function MembersPageContent() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-lg border bg-card hover:border-primary p-4 shadow-xs">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-muted-foreground text-xs font-medium uppercase">
-                      Total Members
-                    </p>
-                    <span className="rounded-md bg-blue-700/10 p-1.5 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300">
-                      <Users className="size-4" />
-                    </span>
-                  </div>
-                  <p className="text-2xl font-semibold">{totalMembers}</p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    All recorded member profiles
-                  </p>
-                </div>
-
-                <div className="rounded-lg border bg-card hover:border-primary p-4 shadow-xs">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-muted-foreground text-xs font-medium uppercase">
-                      Approved
-                    </p>
-                    <span className="rounded-md bg-emerald-700/10 p-1.5 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300">
-                      <CheckCircle2 className="size-4" />
-                    </span>
-                  </div>
-                  <p className="text-2xl font-semibold">{approvedMembers}</p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Fully endorsed members
-                  </p>
-                </div>
-
-                <div className="rounded-lg border bg-card hover:border-primary p-4 shadow-xs">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-muted-foreground text-xs font-medium uppercase">
-                      Pending
-                    </p>
-                    <span className="rounded-md bg-amber-700/10 p-1.5 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300">
-                      <Clock3 className="size-4" />
-                    </span>
-                  </div>
-                  <p className="text-2xl font-semibold">{pendingMembers}</p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Awaiting review and validation
-                  </p>
-                </div>
-
-                <div className="rounded-lg border bg-card hover:border-primary p-4 shadow-xs">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-muted-foreground text-xs font-medium uppercase">
-                      Archived
-                    </p>
-                    <span className="rounded-md bg-red-700/10 p-1.5 text-red-700 dark:bg-red-300/10 dark:text-red-300">
-                      <ShieldAlert className="size-4" />
-                    </span>
-                  </div>
-                  <p className="text-2xl font-semibold">{archivedMembers}</p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Archived profiles, with {rejectedMembers} rejected
-                    applications.
-                  </p>
-                </div>
+                <SummaryStatCard
+                  label="Total Members"
+                  value={totalMembers}
+                  description="All recorded member profiles"
+                  icon={<Users className="size-4" />}
+                  accentClassName="bg-blue-700/10 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300"
+                  active={statusTab === "ALL"}
+                  onClick={() => setStatusTab("ALL")}
+                />
+                <SummaryStatCard
+                  label="Approved"
+                  value={approvedMembers}
+                  description="Fully endorsed members"
+                  icon={<CheckCircle2 className="size-4" />}
+                  accentClassName="bg-emerald-700/10 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300"
+                  active={statusTab === "APPROVED"}
+                  onClick={() => setStatusTab("APPROVED")}
+                />
+                <SummaryStatCard
+                  label="Pending"
+                  value={pendingMembers}
+                  description="Awaiting review and validation"
+                  icon={<Clock3 className="size-4" />}
+                  accentClassName="bg-amber-700/10 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300"
+                  active={statusTab === "PENDING"}
+                  onClick={() => setStatusTab("PENDING")}
+                />
+                <SummaryStatCard
+                  label="Archived"
+                  value={archivedMembers}
+                  description={`Archived profiles, with ${rejectedMembers} rejected applications.`}
+                  icon={<ShieldAlert className="size-4" />}
+                  accentClassName="bg-red-700/10 text-red-700 dark:bg-red-300/10 dark:text-red-300"
+                  active={statusTab === "ARCHIVED"}
+                  onClick={() => setStatusTab("ARCHIVED")}
+                />
               </CardContent>
             </Card>
 
@@ -487,33 +876,50 @@ export function MembersPageContent() {
                     backUrl="/dashboard"
                     backLabel="Back to dashboard"
                   />
-                ) : viewMode === "grid" ? (
-                  <MembersGridView
-                    data={filteredMembers}
-                    isArchiveActionPending={isArchiveActionPending}
-                    onViewDetails={handleViewDetails}
-                    onEditDetails={handleEditDetails}
-                    onAssignOffice={handleAssignOffice}
-                    onRequestToggleMemberArchiveState={handleSuspendMember}
-                    onGenerateQrCode={handleGenerateQrCode}
-                  />
                 ) : (
-                  <MembersDataTable
-                    data={filteredMembers}
-                    bulkActionLabel={
-                      statusTab === "ARCHIVED" ? "Retrieve" : "Archive"
-                    }
-                    isBatchQrPending={isBatchQrPending}
-                    isBulkActionPending={isArchiveActionPending}
-                    isRowArchiveActionPending={isArchiveActionPending}
-                    onBatchDownloadQrCodes={handleBatchDownloadQrCodes}
-                    onRequestBulkAction={handleRequestBulkMemberAction}
-                    onViewDetails={handleViewDetails}
-                    onEditDetails={handleEditDetails}
-                    onAssignOffice={handleAssignOffice}
-                    onRequestToggleMemberArchiveState={handleSuspendMember}
-                    onGenerateQrCode={handleGenerateQrCode}
-                  />
+                  <>
+                    {membersToolbar}
+                    {viewMode === "grid" ? (
+                      <MembersGridView
+                        data={paginatedMembers}
+                        isArchiveActionPending={isArchiveActionPending}
+                        emptyMessage={
+                          hasActiveFilters || searchQuery.trim()
+                            ? "No members match the selected filters."
+                            : undefined
+                        }
+                        onViewDetails={handleViewDetails}
+                        onEditDetails={handleEditDetails}
+                        onAssignOffice={handleAssignOffice}
+                        onRequestToggleMemberArchiveState={handleSuspendMember}
+                        onGenerateQrCode={handleGenerateQrCode}
+                      />
+                    ) : (
+                      <MembersDataTable
+                        data={paginatedMembers}
+                        bulkActionLabel={
+                          statusTab === "ARCHIVED" ? "Retrieve" : "Archive"
+                        }
+                        sorting={tableSorting}
+                        onSortingChange={setTableSorting}
+                        updatingMemberTypeId={updatingMemberTypeId}
+                        updatingMemberStatusId={updatingMemberStatusId}
+                        isBatchQrPending={isBatchQrPending}
+                        isBulkActionPending={isArchiveActionPending}
+                        isRowArchiveActionPending={isArchiveActionPending}
+                        onBatchDownloadQrCodes={handleBatchDownloadQrCodes}
+                        onRequestBulkAction={handleRequestBulkMemberAction}
+                        onViewDetails={handleViewDetails}
+                        onEditDetails={handleEditDetails}
+                        onAssignOffice={handleAssignOffice}
+                        onRequestToggleMemberArchiveState={handleSuspendMember}
+                        onGenerateQrCode={handleGenerateQrCode}
+                        onUpdateMemberType={handleUpdateMemberType}
+                        onUpdateMemberStatus={handleUpdateMemberStatus}
+                      />
+                    )}
+                    {paginationControls}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -537,6 +943,16 @@ export function MembersPageContent() {
         onOpenChange={(open) => {
           if (!open) {
             setQrDialogMember(null);
+          }
+        }}
+      />
+
+      <MemberDetailsSheet
+        memberId={detailsMemberId}
+        open={Boolean(detailsMemberId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailsMemberId(null);
           }
         }}
       />
@@ -569,10 +985,14 @@ export function MembersPageContent() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingMemberAction(null)}>
+            <AlertDialogCancel
+              size="sm"
+              onClick={() => setPendingMemberAction(null)}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
+              size="sm"
               onClick={() => void handleConfirmPendingMemberAction()}
               disabled={isArchiveActionPending}
             >
@@ -613,6 +1033,7 @@ export function MembersPageContent() {
 function MembersGridView({
   data,
   isArchiveActionPending,
+  emptyMessage,
   onViewDetails,
   onEditDetails,
   onAssignOffice,
@@ -621,6 +1042,7 @@ function MembersGridView({
 }: {
   data: MemberRecord[];
   isArchiveActionPending: boolean;
+  emptyMessage?: string;
   onViewDetails: (member: MemberRecord) => void;
   onEditDetails: (member: MemberRecord) => void;
   onAssignOffice: (member: MemberRecord) => void;
@@ -631,7 +1053,10 @@ function MembersGridView({
     return (
       <PageEmptyState
         title="No members found"
-        description="Get started by adding a new member manually or importing your data via Excel."
+        description={
+          emptyMessage ??
+          "Get started by adding a new member manually or importing your data via Excel."
+        }
         createUrl="/members/new"
         createLabel="Add new member"
       />
@@ -639,7 +1064,7 @@ function MembersGridView({
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-5 mt-5 sm:grid-cols-2 xl:grid-cols-3">
       {data.map((member) => (
         <Card
           key={member.id}
@@ -717,7 +1142,7 @@ function MembersGridView({
                     className="object-cover object-top"
                   />
                 ) : null}
-                <AvatarFallback className="text-4xl font-semibold rounded-none text-white bg-accent">
+                <AvatarFallback className="text-4xl font-bold rounded-none bg-accent">
                   {getMemberInitials(member.fullName)}
                 </AvatarFallback>
               </Avatar>
@@ -726,7 +1151,7 @@ function MembersGridView({
 
           <CardContent className="space-y-4 px-6 py-5 pt-0!">
             <div className="space-y-1">
-              <h3 className="text-xl font-semibold tracking-tight">
+              <h3 className="text-xl uppercase font-semibold tracking-tight">
                 {member.fullName}
               </h3>
               <p className="text-muted-foreground text-sm">
@@ -765,4 +1190,252 @@ function getMemberInitials(fullName: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function applyMembersFilters(
+  members: MemberRecord[],
+  searchQuery: string,
+  memberTypeFilter: string,
+  branchOfServiceFilter: string,
+  applicationDateRange: DateRange | undefined,
+) {
+  return members.filter((member) => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
+    if (normalizedSearch) {
+      const matchesSearch = [
+        member.uniqueId,
+        member.fullName,
+        member.memberType,
+        member.email,
+        member.mobile,
+        member.civilStatus,
+        member.branchOfService,
+        member.status,
+        member.badgeNumber,
+      ].some((value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .includes(normalizedSearch),
+      );
+
+      if (!matchesSearch) {
+        return false;
+      }
+    }
+
+    if (
+      memberTypeFilter !== "all" &&
+      member.memberTypeValue !== memberTypeFilter
+    ) {
+      return false;
+    }
+
+    if (
+      branchOfServiceFilter !== "all" &&
+      (branchOfServiceFilter === NO_BRANCHES_FILTER_VALUE
+        ? member.branchOfServiceValues.length > 0
+        : !member.branchOfServiceValues.includes(branchOfServiceFilter))
+    ) {
+      return false;
+    }
+
+    if (!applicationDateRange?.from && !applicationDateRange?.to) {
+      return true;
+    }
+
+    const appliedAt = new Date(member.appliedAt);
+
+    if (Number.isNaN(appliedAt.getTime())) {
+      return false;
+    }
+
+    if (
+      applicationDateRange.from &&
+      isBefore(appliedAt, startOfDay(applicationDateRange.from))
+    ) {
+      return false;
+    }
+
+    const rangeEnd = applicationDateRange.to ?? applicationDateRange.from;
+
+    if (rangeEnd && isAfter(appliedAt, endOfDay(rangeEnd))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function formatMemberTypeLabel(memberType: MemberType) {
+  switch (memberType) {
+    case MemberType.PROFESSIONAL_CHAPLAIN:
+      return "Professional Chaplain";
+    case MemberType.ORDAINED_AND_COMMISSIONED_PRACTITIONER:
+      return "Ordained and Commissioned Practitioner";
+    case MemberType.CERTIFIED_SPECIALIST_TRAINING_OFFICER_INSTRUCTOR:
+      return "Certified Specialist Training Officer/Instructor";
+    case MemberType.ASSOCIATE_CHAPLAIN:
+    default:
+      return "Associate Chaplain";
+  }
+}
+
+function sortMembers(members: MemberRecord[], sorting: SortingState) {
+  if (!sorting.length) {
+    return members;
+  }
+
+  const [{ id, desc }] = sorting;
+  const direction = desc ? -1 : 1;
+
+  return [...members].sort((left, right) => {
+    let comparison = 0;
+
+    switch (id) {
+      case "uniqueId":
+        comparison = compareMemberUniqueId(left.uniqueId, right.uniqueId);
+        break;
+      case "fullName":
+        comparison = left.fullName.localeCompare(right.fullName, undefined, {
+          sensitivity: "base",
+        });
+        break;
+      case "memberType":
+        comparison = left.memberType.localeCompare(
+          right.memberType,
+          undefined,
+          {
+            sensitivity: "base",
+          },
+        );
+        break;
+      case "branchOfService":
+        comparison = left.branchOfService.localeCompare(
+          right.branchOfService,
+          undefined,
+          {
+            sensitivity: "base",
+          },
+        );
+        break;
+      case "status":
+        comparison = left.status.localeCompare(right.status, undefined, {
+          sensitivity: "base",
+        });
+        break;
+      case "appliedAt":
+        comparison =
+          new Date(left.appliedAt).getTime() -
+          new Date(right.appliedAt).getTime();
+        break;
+      default:
+        comparison = 0;
+        break;
+    }
+
+    if (comparison !== 0) {
+      return comparison * direction;
+    }
+
+    return compareMemberUniqueId(left.uniqueId, right.uniqueId) * direction;
+  });
+}
+
+function compareNatural(left: string, right: string) {
+  return left.localeCompare(right, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function compareMemberUniqueId(
+  leftUniqueId: string | null,
+  rightUniqueId: string | null,
+) {
+  const leftParsed = parseMemberUniqueId(leftUniqueId);
+  const rightParsed = parseMemberUniqueId(rightUniqueId);
+
+  if (!leftParsed && !rightParsed) {
+    return 0;
+  }
+
+  if (!leftParsed) {
+    return 1;
+  }
+
+  if (!rightParsed) {
+    return -1;
+  }
+
+  const prefixComparison =
+    getUniqueIdPrefixRank(leftParsed.prefix) -
+    getUniqueIdPrefixRank(rightParsed.prefix);
+
+  if (prefixComparison !== 0) {
+    return prefixComparison;
+  }
+
+  const seriesComparison = leftParsed.series - rightParsed.series;
+
+  if (seriesComparison !== 0) {
+    return seriesComparison;
+  }
+
+  return compareNatural(leftParsed.raw, rightParsed.raw);
+}
+
+function parseMemberUniqueId(uniqueId: string | null) {
+  if (!uniqueId) {
+    return null;
+  }
+
+  const match = uniqueId.match(/^(\d{3})-(\d{5})$/);
+
+  if (!match) {
+    return {
+      raw: uniqueId,
+      prefix: uniqueId,
+      series: Number.MAX_SAFE_INTEGER,
+    };
+  }
+
+  return {
+    raw: uniqueId,
+    prefix: match[1],
+    series: Number.parseInt(match[2], 10),
+  };
+}
+
+function getUniqueIdPrefixRank(prefix: string) {
+  if (prefix === "262") {
+    return 0;
+  }
+
+  if (prefix === "261") {
+    return 1;
+  }
+
+  return Number.parseInt(prefix, 10) || Number.MAX_SAFE_INTEGER;
+}
+
+function buildQrFileBaseName(
+  lastName: string,
+  firstName: string,
+  idNumber: string,
+) {
+  return [
+    sanitizeFileNameSegment(lastName),
+    sanitizeFileNameSegment(firstName),
+    sanitizeFileNameSegment(idNumber),
+  ]
+    .filter(Boolean)
+    .join("-");
+}
+
+function sanitizeFileNameSegment(value: string) {
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }

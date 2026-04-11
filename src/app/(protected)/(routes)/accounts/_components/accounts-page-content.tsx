@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   CheckCircle2,
   Clock3,
@@ -28,9 +28,14 @@ import {
 import { type AccountRecord } from "./accounts-data";
 import { AccountsDataTable } from "./accounts-data-table";
 import { RegisterAccountButton } from "./register-account-button";
+import { SummaryStatCard } from "@/components/SummaryStatCard";
+
+type AccountSummaryFilter = "ALL" | "ACTIVE" | "PENDING" | "TWO_FACTOR";
 
 export function AccountsPageContent() {
   const { toast } = useToast();
+  const [summaryFilter, setSummaryFilter] =
+    useState<AccountSummaryFilter>("ALL");
   const accountsQuery = useAccountsQuery();
   const updateAccountMutation = useUpdateAccountMutation();
 
@@ -73,6 +78,25 @@ export function AccountsPageContent() {
   const twoFactorRate = totalAccounts
     ? Math.round((twoFactorEnabled / totalAccounts) * 100)
     : 0;
+  const filteredAccounts = useMemo(() => {
+    if (summaryFilter === "ACTIVE") {
+      return accounts.filter(
+        (account) => account.status === UserAccountStatus.ACTIVE,
+      );
+    }
+
+    if (summaryFilter === "PENDING") {
+      return accounts.filter(
+        (account) => account.status === UserAccountStatus.PENDING,
+      );
+    }
+
+    if (summaryFilter === "TWO_FACTOR") {
+      return accounts.filter((account) => account.isTwoFactorEnabled);
+    }
+
+    return accounts;
+  }, [accounts, summaryFilter]);
 
   const handleArchiveAccount = async (accountId: string) => {
     try {
@@ -147,69 +171,48 @@ export function AccountsPageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border bg-card hover:border-primary p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Total Accounts
-                  </p>
-                  <span className="rounded-md bg-blue-700/10 p-1.5 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300">
-                    <UsersRound className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{totalAccounts}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  All registered administrator profiles
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card hover:border-primary p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Active
-                  </p>
-                  <span className="rounded-md bg-emerald-700/10 p-1.5 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300">
-                    <CheckCircle2 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{activeAccounts}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Accounts currently able to sign in
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card hover:border-primary p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Pending
-                  </p>
-                  <span className="rounded-md bg-amber-700/10 p-1.5 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300">
-                    <Clock3 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{pendingAccounts}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Accounts waiting for full activation
-                </p>
-              </div>
-
-              <div className="rounded-lg border bg-card hover:border-primary p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    2FA Coverage
-                  </p>
-                  <span className="rounded-md bg-violet-700/10 p-1.5 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300">
-                    {twoFactorRate >= 50 ? (
-                      <ShieldCheck className="size-4" />
-                    ) : (
-                      <ShieldX className="size-4" />
-                    )}
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{twoFactorRate}%</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Accounts with two-factor authentication enabled
-                </p>
-              </div>
+              <SummaryStatCard
+                label="Total Accounts"
+                value={totalAccounts}
+                description="All registered administrator profiles"
+                icon={<UsersRound className="size-4" />}
+                accentClassName="bg-blue-700/10 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300"
+                active={summaryFilter === "ALL"}
+                onClick={() => setSummaryFilter("ALL")}
+              />
+              <SummaryStatCard
+                label="Active"
+                value={activeAccounts}
+                description="Accounts currently able to sign in"
+                icon={<CheckCircle2 className="size-4" />}
+                accentClassName="bg-emerald-700/10 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300"
+                active={summaryFilter === "ACTIVE"}
+                onClick={() => setSummaryFilter("ACTIVE")}
+              />
+              <SummaryStatCard
+                label="Pending"
+                value={pendingAccounts}
+                description="Accounts waiting for full activation"
+                icon={<Clock3 className="size-4" />}
+                accentClassName="bg-amber-700/10 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300"
+                active={summaryFilter === "PENDING"}
+                onClick={() => setSummaryFilter("PENDING")}
+              />
+              <SummaryStatCard
+                label="2FA Coverage"
+                value={`${twoFactorRate}%`}
+                description="Accounts with two-factor authentication enabled"
+                icon={
+                  twoFactorRate >= 50 ? (
+                    <ShieldCheck className="size-4" />
+                  ) : (
+                    <ShieldX className="size-4" />
+                  )
+                }
+                accentClassName="bg-violet-700/10 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300"
+                active={summaryFilter === "TWO_FACTOR"}
+                onClick={() => setSummaryFilter("TWO_FACTOR")}
+              />
             </CardContent>
           </Card>
 
@@ -236,7 +239,7 @@ export function AccountsPageContent() {
                 />
               ) : (
                 <AccountsDataTable
-                  data={accounts}
+                  data={filteredAccounts}
                   onArchiveAccount={handleArchiveAccount}
                   onRetrieveAccount={handleRetrieveAccount}
                 />

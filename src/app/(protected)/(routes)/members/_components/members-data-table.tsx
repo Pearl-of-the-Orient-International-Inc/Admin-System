@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import {
   ArrowDownUp,
   BriefcaseBusiness,
@@ -14,9 +14,11 @@ import {
   ShieldMinus,
   Archive,
   Edit,
+  ChevronsUpDown,
 } from "lucide-react";
 
 import { GlobalDataTable } from "@/components/DataTable";
+import { MemberType } from "@/enums";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,15 +30,29 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { MemberRecord } from "./members-data";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  memberTypeFilterOptions,
+  type MemberRecord,
+} from "./members-data";
 import Image from "next/image";
 
 type MembersDataTableProps = {
   data: MemberRecord[];
   bulkActionLabel: "Archive" | "Retrieve";
+  sorting: SortingState;
+  onSortingChange: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
   isBatchQrPending?: boolean;
   isBulkActionPending?: boolean;
   isRowArchiveActionPending?: boolean;
+  updatingMemberTypeId?: string | null;
+  updatingMemberStatusId?: string | null;
   onBatchDownloadQrCodes: (members: MemberRecord[]) => void;
   onRequestBulkAction: (memberIds: string[]) => void;
   onViewDetails: (member: MemberRecord) => void;
@@ -44,14 +60,26 @@ type MembersDataTableProps = {
   onAssignOffice: (member: MemberRecord) => void;
   onRequestToggleMemberArchiveState: (member: MemberRecord) => void;
   onGenerateQrCode: (member: MemberRecord) => void;
+  onUpdateMemberType: (
+    member: MemberRecord,
+    memberType: MemberType,
+  ) => Promise<void>;
+  onUpdateMemberStatus: (
+    member: MemberRecord,
+    status: EditableMemberStatus,
+  ) => Promise<void>;
 };
 
 export function MembersDataTable({
   data,
   bulkActionLabel,
+  sorting,
+  onSortingChange,
   isBatchQrPending = false,
   isBulkActionPending = false,
   isRowArchiveActionPending = false,
+  updatingMemberTypeId = null,
+  updatingMemberStatusId = null,
   onBatchDownloadQrCodes,
   onRequestBulkAction,
   onViewDetails,
@@ -59,7 +87,16 @@ export function MembersDataTable({
   onAssignOffice,
   onRequestToggleMemberArchiveState,
   onGenerateQrCode,
+  onUpdateMemberType,
+  onUpdateMemberStatus,
 }: MembersDataTableProps) {
+  const [editingMemberTypeId, setEditingMemberTypeId] = useState<string | null>(
+    null,
+  );
+  const [editingMemberStatusId, setEditingMemberStatusId] = useState<string | null>(
+    null,
+  );
+
   const columns = useMemo<ColumnDef<MemberRecord>[]>(
     () => [
       {
@@ -97,12 +134,12 @@ export function MembersDataTable({
                   className="object-cover"
                 />
               ) : null}
-              <AvatarFallback className="bg-slate-600 text-sm font-semibold text-white">
+              <AvatarFallback className="bg-green-600 text-sm font-semibold text-white">
                 {getMemberInitials(row.original.fullName)}
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-medium">{row.original.fullName}</p>
+              <p className="font-medium uppercase">{row.original.fullName}</p>
               <p className="text-muted-foreground text-xs">
                 Badge No.: {row.original.badgeNumber || "N/A"}
               </p>
@@ -111,36 +148,44 @@ export function MembersDataTable({
         ),
       },
       {
-        accessorKey: "email",
-        header: "Email",
-      },
-      {
         accessorKey: "memberType",
         header: "Member Type",
-      },
-      {
-        accessorKey: "mobile",
-        header: "Mobile",
+        cell: ({ row }) => (
+          <EditableMemberTypeCell
+            member={row.original}
+            isEditing={editingMemberTypeId === row.original.memberId}
+            isPending={updatingMemberTypeId === row.original.memberId}
+            onStartEditing={() => setEditingMemberTypeId(row.original.memberId)}
+            onCancelEditing={() => setEditingMemberTypeId(null)}
+            onSave={async (memberType) => {
+              await onUpdateMemberType(row.original, memberType);
+              setEditingMemberTypeId(null);
+            }}
+          />
+        ),
       },
       {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => {
-          if (row.original.status === "Approved") {
-            return <Badge variant="success">Approved</Badge>;
-          }
-          if (row.original.status === "Pending") {
-            return <Badge variant="warning">Pending</Badge>;
-          }
-          if (row.original.status === "Rejected") {
-            return <Badge variant="error">Rejected</Badge>;
-          }
-          return <Badge variant="error">Archived</Badge>;
+          return (
+            <EditableStatusCell
+              member={row.original}
+              isEditing={editingMemberStatusId === row.original.memberId}
+              isPending={updatingMemberStatusId === row.original.memberId}
+              onStartEditing={() => setEditingMemberStatusId(row.original.memberId)}
+              onCancelEditing={() => setEditingMemberStatusId(null)}
+              onSave={async (status) => {
+                await onUpdateMemberStatus(row.original, status);
+                setEditingMemberStatusId(null);
+              }}
+            />
+          );
         },
       },
       {
         accessorKey: "appliedAt",
-        header: "Applied At",
+        header: "Application Date",
         cell: ({ row }) =>
           new Date(row.original.appliedAt).toLocaleDateString("en-US", {
             year: "numeric",
@@ -149,7 +194,14 @@ export function MembersDataTable({
           }),
       },
     ],
-    [],
+    [
+      editingMemberStatusId,
+      editingMemberTypeId,
+      onUpdateMemberStatus,
+      onUpdateMemberType,
+      updatingMemberStatusId,
+      updatingMemberTypeId,
+    ],
   );
 
   if (data.length === 0) {
@@ -176,6 +228,11 @@ export function MembersDataTable({
     <GlobalDataTable
       data={data}
       columns={columns}
+      hideSearch
+      hideFooter
+      manualSorting
+      sorting={sorting}
+      onSortingChange={onSortingChange}
       filterPlaceholder="Search member name, email, branch, or status..."
       emptyMessage="No members found."
       exportFileName="members"
@@ -183,20 +240,20 @@ export function MembersDataTable({
         <>
           <Button
             variant="outline"
-            size="sm"
+            size="xs"
             onClick={() => onBatchDownloadQrCodes(rows)}
             disabled={isBatchQrPending || isBulkActionPending}
           >
             {isBatchQrPending ? (
-              <LoaderCircle className="size-4 animate-spin" />
+              <LoaderCircle className="size-3.5 animate-spin" />
             ) : (
-              <Download className="size-4" />
+              <Download className="size-3.5" />
             )}
             {isBatchQrPending ? "Preparing..." : "Download QR Codes"}
           </Button>
           <Button
             variant={bulkActionLabel === "Archive" ? "destructive" : "outline"}
-            size="sm"
+            size="xs"
             onClick={() => {
               onRequestBulkAction(rows.map((row) => row.memberId));
               clearSelection();
@@ -204,11 +261,11 @@ export function MembersDataTable({
             disabled={isBulkActionPending || isBatchQrPending}
           >
             {isBulkActionPending ? (
-              <LoaderCircle className="size-4 animate-spin" />
+              <LoaderCircle className="size-3.5 animate-spin" />
             ) : bulkActionLabel === "Archive" ? (
-              <Archive className="size-4" />
+              <Archive className="size-3.5" />
             ) : (
-              <RotateCcw className="size-4" />
+              <RotateCcw className="size-3.5" />
             )}
             {isBulkActionPending
               ? bulkActionLabel === "Archive"
@@ -279,6 +336,165 @@ export function MembersDataTable({
     />
   );
 }
+
+type EditableMemberStatus = "Approved" | "Pending" | "Rejected" | "Archived";
+
+function EditableMemberTypeCell({
+  member,
+  isEditing,
+  isPending,
+  onStartEditing,
+  onCancelEditing,
+  onSave,
+}: {
+  member: MemberRecord;
+  isEditing: boolean;
+  isPending: boolean;
+  onStartEditing: () => void;
+  onCancelEditing: () => void;
+  onSave: (memberType: MemberType) => Promise<void>;
+}) {
+  if (isEditing) {
+    return (
+      <div className="max-w-40 truncate">
+        <Select
+          open
+          value={member.memberTypeValue}
+          onOpenChange={(open) => {
+            if (!open && !isPending) {
+              onCancelEditing();
+            }
+          }}
+          onValueChange={(value) => {
+            void onSave(value as MemberType);
+          }}
+          disabled={isPending}
+        >
+          <SelectTrigger className="h-9 w-full">
+            <SelectValue placeholder="Select member type" />
+          </SelectTrigger>
+          <SelectContent>
+            {memberTypeFilterOptions.map((memberType) => (
+              <SelectItem key={memberType.value} value={memberType.value}>
+                {memberType.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="group inline-flex min-w-0 items-center gap-2 rounded-md px-2 py-1 -mx-2 hover:bg-muted"
+      onDoubleClick={() => {
+        onStartEditing();
+      }}
+      disabled={isPending}
+      title="Double-click to edit member type"
+    >
+      <span className="truncate max-w-40">{member.memberType}</span>
+      {isPending ? (
+        <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
+      ) : (
+        <ChevronsUpDown className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      )}
+    </button>
+  );
+}
+
+function EditableStatusCell({
+  member,
+  isEditing,
+  isPending,
+  onStartEditing,
+  onCancelEditing,
+  onSave,
+}: {
+  member: MemberRecord;
+  isEditing: boolean;
+  isPending: boolean;
+  onStartEditing: () => void;
+  onCancelEditing: () => void;
+  onSave: (status: EditableMemberStatus) => Promise<void>;
+}) {
+  if (isEditing) {
+    return (
+      <div className="min-w-40">
+        <Select
+          open
+          value={member.status}
+          onOpenChange={(open) => {
+            if (!open && !isPending) {
+              onCancelEditing();
+            }
+          }}
+          onValueChange={(value) => {
+            void onSave(value as EditableMemberStatus);
+          }}
+          disabled={isPending}
+        >
+          <SelectTrigger className="h-9 w-full">
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            {MEMBER_STATUS_OPTIONS.map((status) => (
+              <SelectItem
+                key={status.value}
+                value={status.value}
+                disabled={status.value === "Pending"}
+              >
+                {status.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="group inline-flex min-w-0 items-center gap-2 rounded-md px-2 py-1 -mx-2 hover:bg-muted"
+      onDoubleClick={() => onStartEditing()}
+      disabled={isPending}
+      title="Double-click to edit status"
+    >
+      {renderStatusBadge(member.status)}
+      {isPending ? (
+        <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
+      ) : (
+        <ChevronsUpDown className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      )}
+    </button>
+  );
+}
+
+function renderStatusBadge(status: EditableMemberStatus) {
+  if (status === "Approved") {
+    return <Badge variant="success">Approved</Badge>;
+  }
+  if (status === "Pending") {
+    return <Badge variant="warning">Pending</Badge>;
+  }
+  if (status === "Rejected") {
+    return <Badge variant="error">Rejected</Badge>;
+  }
+  return <Badge variant="error">Archived</Badge>;
+}
+
+const MEMBER_STATUS_OPTIONS: Array<{
+  value: EditableMemberStatus;
+  label: string;
+}> = [
+  { value: "Approved", label: "Approved" },
+  { value: "Pending", label: "Pending" },
+  { value: "Rejected", label: "Rejected" },
+  { value: "Archived", label: "Archived" },
+];
 
 function getMemberInitials(fullName: string) {
   return fullName

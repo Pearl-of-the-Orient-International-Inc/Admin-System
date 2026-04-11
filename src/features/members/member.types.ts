@@ -33,6 +33,7 @@ export type CreateMemberByAdminRequest = {
   sssNumber?: string;
   tinNumber?: string;
   skillsTalents?: string;
+  preferredBranchIds?: string[];
   preferredBranchOther?: string;
   elementarySchool?: string;
   secondarySchool?: string;

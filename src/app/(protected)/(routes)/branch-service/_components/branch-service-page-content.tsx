@@ -28,13 +28,23 @@ import {
   useBranchServicesQuery,
   useDeleteBranchServiceMutation,
 } from "@/features/branch-service/branch-service.hooks";
+import { useMembersQuery } from "@/features/members/member.hooks";
 import { useToast } from "@/hooks/use-toast";
 import { BranchServicesDataTable } from "./branch-services-data-table";
 import { CreateBranchServiceButton } from "./create-branch-service-button";
+import { SummaryStatCard } from "@/components/SummaryStatCard";
+
+type BranchServiceSummarySort =
+  | "DEFAULT"
+  | "SECTIONS"
+  | "MEMBERS"
+  | "DESCRIPTION_SIZE";
 
 export function BranchServicePageContent() {
   const { toast } = useToast();
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [summarySort, setSummarySort] =
+    useState<BranchServiceSummarySort>("DEFAULT");
 
   const branchServicesQuery = useBranchServicesQuery({
     page: 1,
@@ -42,10 +52,60 @@ export function BranchServicePageContent() {
     sortBy: "updatedAt",
     sortOrder: "desc",
   });
+  const membersQuery = useMembersQuery({
+    limit: 100,
+    includeArchived: true,
+  });
   const deleteBranchServiceMutation = useDeleteBranchServiceMutation();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const branchServices = branchServicesQuery.data?.items ?? [];
+  const branchServices = useMemo(() => {
+    const items = branchServicesQuery.data?.items ?? [];
+    const members = membersQuery.data?.data ?? [];
+
+    return items.map((branchService) => {
+      const normalizedTitle = branchService.title.trim().toLowerCase();
+
+      const memberCount = members.filter((member) => {
+        const preferredBranchMatch =
+          member.preferredBranches?.some(
+            (branch) => branch.title.trim().toLowerCase() === normalizedTitle,
+          ) ?? false;
+
+        if (preferredBranchMatch) {
+          return true;
+        }
+
+        return member.preferredBranchOther?.trim().toLowerCase() === normalizedTitle;
+      }).length;
+
+      return {
+        ...branchService,
+        memberCount,
+      };
+    });
+  }, [branchServicesQuery.data?.items, membersQuery.data?.data]);
+  const visibleBranchServices = useMemo(() => {
+    if (summarySort === "SECTIONS") {
+      return [...branchServices].sort(
+        (left, right) =>
+          (right.sections?.length ?? 0) - (left.sections?.length ?? 0),
+      );
+    }
+
+    if (summarySort === "MEMBERS") {
+      return [...branchServices].sort(
+        (left, right) => (right.memberCount ?? 0) - (left.memberCount ?? 0),
+      );
+    }
+
+    if (summarySort === "DESCRIPTION_SIZE") {
+      return [...branchServices].sort(
+        (left, right) => right.description.length - left.description.length,
+      );
+    }
+
+    return branchServices;
+  }, [branchServices, summarySort]);
   const totalBranchServices = branchServices.length;
   const hasNoBranchServices =
     !branchServicesQuery.isLoading &&
@@ -149,49 +209,41 @@ export function BranchServicePageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">Total</p>
-                  <span className="rounded-md bg-blue-700/10 p-1.5 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300">
-                    <GitBranchPlus className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{totalBranchServices}</p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">Sections</p>
-                  <span className="rounded-md bg-emerald-700/10 p-1.5 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300">
-                    <Layers3 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{totalSections}</p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Avg. Sections
-                  </p>
-                  <span className="rounded-md bg-amber-700/10 p-1.5 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300">
-                    <Layers3 className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{averageSections}</p>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-muted-foreground text-xs font-medium uppercase">
-                    Description Size
-                  </p>
-                  <span className="rounded-md bg-violet-700/10 p-1.5 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300">
-                    <TextIcon className="size-4" />
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold">{totalDescriptionLength}</p>
-              </div>
+              <SummaryStatCard
+                label="Total"
+                value={totalBranchServices}
+                icon={<GitBranchPlus className="size-4" />}
+                accentClassName="bg-blue-700/10 text-blue-700 dark:bg-blue-300/10 dark:text-blue-300"
+                active={summarySort === "DEFAULT"}
+                onClick={() => setSummarySort("DEFAULT")}
+              />
+              <SummaryStatCard
+                label="Sections"
+                value={totalSections}
+                description="Click to sort branches by section count"
+                icon={<Layers3 className="size-4" />}
+                accentClassName="bg-emerald-700/10 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300"
+                active={summarySort === "SECTIONS"}
+                onClick={() => setSummarySort("SECTIONS")}
+              />
+              <SummaryStatCard
+                label="Avg. Sections"
+                value={averageSections}
+                description="Click to sort branches by member count"
+                icon={<Layers3 className="size-4" />}
+                accentClassName="bg-amber-700/10 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300"
+                active={summarySort === "MEMBERS"}
+                onClick={() => setSummarySort("MEMBERS")}
+              />
+              <SummaryStatCard
+                label="Description Size"
+                value={totalDescriptionLength}
+                description="Click to sort branches by description length"
+                icon={<TextIcon className="size-4" />}
+                accentClassName="bg-violet-700/10 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300"
+                active={summarySort === "DESCRIPTION_SIZE"}
+                onClick={() => setSummarySort("DESCRIPTION_SIZE")}
+              />
             </CardContent>
           </Card>
 
@@ -205,12 +257,14 @@ export function BranchServicePageContent() {
             <CardContent>
               {branchServicesQuery.isLoading ? (
                 <PageLoadingState mode="table" />
-              ) : branchServicesQuery.isError ? (
+              ) : branchServicesQuery.isError || membersQuery.isError ? (
                 <PageErrorState
                   title="Unable to load branch services"
                   description={
                     branchServicesQuery.error instanceof Error
                       ? branchServicesQuery.error.message
+                      : membersQuery.error instanceof Error
+                        ? membersQuery.error.message
                       : "Branch service records could not be loaded right now."
                   }
                   backUrl="/dashboard"
@@ -218,7 +272,7 @@ export function BranchServicePageContent() {
                 />
               ) : (
                 <BranchServicesDataTable
-                  data={branchServices}
+                  data={visibleBranchServices}
                   onDeleteBranchService={requestDeleteBranchService}
                   onDeleteBranchServices={handleDeleteBranchServices}
                 />
