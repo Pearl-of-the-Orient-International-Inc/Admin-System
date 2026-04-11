@@ -49,7 +49,7 @@ import {
   useUpdateMemberStatusMutation,
 } from "@/features/members/member.hooks";
 import { useToast } from "@/hooks/use-toast";
-import { MemberType } from "@/enums";
+import { MemberStatus, MemberType } from "@/enums";
 import { mapAdminMemberToUpdatePayload } from "../../_components/member-form-mappers";
 import {
   AlertDialog,
@@ -370,7 +370,10 @@ export function RenewalMembersPageContent() {
       } else {
         await updateMemberStatusMutation.mutateAsync({
           memberId: member.memberId,
-          status: status === "Approved" ? "APPROVED" : "REJECTED",
+          status:
+            status === "Approved"
+              ? MemberStatus.APPROVED
+              : MemberStatus.REJECTED,
         });
       }
 
