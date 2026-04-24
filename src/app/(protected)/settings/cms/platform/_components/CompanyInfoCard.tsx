@@ -118,7 +118,7 @@ export const CompanyInfoCard = ({
               <Textarea
                 value={tagline}
                 onChange={(e) => onTaglineChange(e.target.value)}
-                placeholder="e.g. The best way to find yourself is to lose in the service of others"
+                placeholder="e.g. The Best Way to Find Yourself Is to Lose Yourself in the Service of Others"
                 rows={2}
               />
             </div>

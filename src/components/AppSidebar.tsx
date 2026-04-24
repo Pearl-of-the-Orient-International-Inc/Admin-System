@@ -10,6 +10,7 @@ import {
   IconLayoutDashboard,
   IconLogs,
   IconMessageCircle,
+  IconPhotoCheck,
   IconPray,
   IconUserCog,
   IconUsersGroup,
@@ -74,6 +75,11 @@ const data = {
           url: "/organizational-structure/office-title",
         },
       ],
+    },
+    {
+      title: "News & Blogs",
+      url: "/news-blogs",
+      icon: IconPhotoCheck,
     },
     {
       title: "Events",

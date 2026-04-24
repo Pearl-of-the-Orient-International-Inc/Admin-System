@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as memberApi from "./member.api";
-import type { MembersQueryParams } from "./member.types";
+import type {
+  MembershipReportQueryParams,
+  MembersQueryParams,
+} from "./member.types";
 
 export const useMembersQuery = (params: MembersQueryParams = {}) =>
   useQuery({
@@ -13,6 +16,15 @@ export const usePendingMembersQuery = (params: MembersQueryParams = {}) =>
   useQuery({
     queryKey: ["members", "pending", params],
     queryFn: () => memberApi.getPendingMembers(params),
+    staleTime: 30_000,
+  });
+
+export const useMembershipReportQuery = (
+  params: MembershipReportQueryParams = {},
+) =>
+  useQuery({
+    queryKey: ["members", "report", "membership", params],
+    queryFn: () => memberApi.getMembershipReport(params),
     staleTime: 30_000,
   });
 

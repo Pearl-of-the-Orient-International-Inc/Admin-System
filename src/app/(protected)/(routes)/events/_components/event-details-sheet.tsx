@@ -13,12 +13,14 @@ import {
   Link2,
   MapPin,
   ShieldCheck,
+  Tag,
   Video,
 } from "lucide-react";
 
 import { EventStatus, EventType, EventVisibility } from "@/enums";
 import { useEventAttendeesQuery } from "@/features/events/event.hooks";
 import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -94,6 +96,20 @@ const getMapEmbedUrl = (query: string) =>
 
 const getMapsLink = (query: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+
+const getInitials = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
+const formatEnumLabel = (value: string) =>
+  value
+    .split("_")
+    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+    .join(" ");
 
 export function EventDetailsSheet({
   event,
@@ -406,6 +422,45 @@ export function EventDetailsSheet({
                     </div>
                   )}
                 </div>
+              </section>
+
+              <section className="space-y-4">
+                <h3 className="border-b pb-3 text-lg font-semibold">
+                  Tagged Members
+                </h3>
+                {event.taggedMembers.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {event.taggedMembers.map((taggedMember) => (
+                      <div
+                        key={taggedMember.id}
+                        className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3"
+                      >
+                        <Avatar className="size-10">
+                          <AvatarImage
+                            src={taggedMember.member.user.avatar ?? undefined}
+                            alt={taggedMember.member.fullName}
+                          />
+                          <AvatarFallback>
+                            {getInitials(taggedMember.member.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold">
+                            {taggedMember.member.fullName}
+                          </p>
+                          <p className="truncate text-sm text-muted-foreground">
+                            {formatEnumLabel(taggedMember.member.memberType)}
+                          </p>
+                        </div>
+                        <Tag className="size-4 shrink-0 text-muted-foreground" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-card p-3 text-sm text-muted-foreground">
+                    No members have been tagged on this event yet.
+                  </div>
+                )}
               </section>
 
               <section className="space-y-4">

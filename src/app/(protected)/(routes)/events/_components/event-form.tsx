@@ -17,13 +17,17 @@ import {
   MapPin,
   Save,
   Sparkles,
+  Tag,
   User,
+  UserPlus,
   Video,
+  X,
 } from "lucide-react";
 
 import {
   EventCategory,
   EventMeetingPlatform,
+  MemberStatus,
   EventType,
   EventVisibility,
 } from "@/enums";
@@ -32,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { toApiError } from "@/lib/http-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Card,
   CardContent,
@@ -40,12 +45,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -68,6 +82,7 @@ import {
   useUpdateEventMutation,
   useUploadEventThumbnailMutation,
 } from "@/features/events/event.hooks";
+import { useMembersQuery } from "@/features/members/member.hooks";
 
 type EventFormMode = "create" | "update";
 type EventFormProps = { mode: EventFormMode; eventId?: string };
@@ -193,6 +208,15 @@ export function EventForm({ mode, eventId }: EventFormProps) {
   return <EventFormEditor mode={mode} eventId={eventId} />;
 }
 
+function getInitials(fullName: string) {
+  return fullName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 function EventFormEditor({
   mode,
   eventId,
@@ -203,10 +227,16 @@ function EventFormEditor({
   const router = useRouter();
   const { toast } = useToast();
   const eventQuery = useEventByIdQuery(eventId ?? "", mode === "update");
+  const membersQuery = useMembersQuery({
+    limit: 100,
+    status: MemberStatus.APPROVED,
+  });
   const createEventMutation = useCreateEventMutation();
   const updateEventMutation = useUpdateEventMutation();
   const uploadThumbnailMutation = useUploadEventThumbnailMutation();
   const [form, setForm] = useState<EventFormState>(emptyForm);
+  const [selectedTaggedMemberIds, setSelectedTaggedMemberIds] = useState<string[]>([]);
+  const [taggedMemberPickerOpen, setTaggedMemberPickerOpen] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState("");
   const [thumbnailFileName, setThumbnailFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -219,6 +249,9 @@ function EventFormEditor({
 
     const nextForm = mapEventToFormState(eventQuery.data);
     setForm(nextForm);
+    setSelectedTaggedMemberIds(
+      eventQuery.data.taggedMembers.map((item) => item.memberId),
+    );
     setThumbnailPreview(nextForm.thumbnailUrl);
     setThumbnailFileName("");
   }, [eventQuery.data]);
@@ -237,6 +270,17 @@ function EventFormEditor({
     [],
   );
   const selectedVisibility = visibilityMeta[form.visibility];
+  const selectableMembers = useMemo(
+    () => membersQuery.data?.data ?? [],
+    [membersQuery.data?.data],
+  );
+  const selectedTaggedMembers = useMemo(
+    () =>
+      selectedTaggedMemberIds
+        .map((memberId) => selectableMembers.find((member) => member.id === memberId))
+        .filter(Boolean),
+    [selectableMembers, selectedTaggedMemberIds],
+  );
   const effectiveMeetingPlatform = useMemo(() => {
     if (form.type !== EventType.ONLINE) return null;
     return (
@@ -356,7 +400,10 @@ function EventFormEditor({
     submitEvent.preventDefault();
 
     try {
-      const payload = buildEventPayload(form);
+      const payload = {
+        ...buildEventPayload(form),
+        taggedMemberIds: selectedTaggedMemberIds,
+      };
 
       if (mode === "create") {
         await createEventMutation.mutateAsync(payload);
@@ -798,6 +845,166 @@ function EventFormEditor({
                     onChange={(e) => setField("organizer", e.target.value)}
                     className={cn(fieldClass, "h-10 rounded-lg")}
                   />
+                </CardContent>
+              </Card>
+
+              <Card className={cn(surfaceClass, "rounded-lg! py-4")}>
+                <CardContent className="space-y-4 px-5">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl bg-background/70 p-2">
+                      <Tag className="size-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-semibold">Tag Members</p>
+                      <p className="text-sm text-muted-foreground">
+                        Optionally connect this event to member profiles as a
+                        linked activity.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Popover
+                    open={taggedMemberPickerOpen}
+                    onOpenChange={setTaggedMemberPickerOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between rounded-lg"
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <UserPlus className="size-4" />
+                          {selectedTaggedMemberIds.length
+                            ? `${selectedTaggedMemberIds.length} member${
+                                selectedTaggedMemberIds.length === 1 ? "" : "s"
+                              } tagged`
+                            : "Choose members to tag"}
+                        </span>
+                        <ChevronsUpDownIcon className="size-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-[420px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search approved members..." />
+                        <CommandList>
+                          <CommandEmpty>
+                            {membersQuery.isLoading
+                              ? "Loading approved members..."
+                              : "No approved members found."}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {selectableMembers.map((member) => {
+                              const isSelected = selectedTaggedMemberIds.includes(
+                                member.id,
+                              );
+                              const fullName = [
+                                member.firstName,
+                                member.middleInitial
+                                  ? `${member.middleInitial.replace(/\.$/, "")}.`
+                                  : null,
+                                member.lastName,
+                                member.extensionName,
+                              ]
+                                .filter(Boolean)
+                                .join(" ");
+
+                              return (
+                                <CommandItem
+                                  key={member.id}
+                                  value={`${fullName} ${member.user.email}`}
+                                  onSelect={() => {
+                                    setSelectedTaggedMemberIds((current) =>
+                                      current.includes(member.id)
+                                        ? current.filter((id) => id !== member.id)
+                                        : [...current, member.id],
+                                    );
+                                  }}
+                                  className="flex items-center gap-3 py-2.5"
+                                >
+                                  <Avatar className="size-8">
+                                    <AvatarImage
+                                      src={member.user.avatar ?? undefined}
+                                      alt={fullName}
+                                    />
+                                    <AvatarFallback>
+                                      {getInitials(fullName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium">
+                                      {fullName}
+                                    </p>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {member.user.email}
+                                    </p>
+                                  </div>
+                                  {isSelected ? (
+                                    <Check className="size-4 shrink-0" />
+                                  ) : null}
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  {selectedTaggedMembers.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTaggedMembers.map((member) => {
+                        if (!member) return null;
+
+                        const fullName = [
+                          member.firstName,
+                          member.middleInitial
+                            ? `${member.middleInitial.replace(/\.$/, "")}.`
+                            : null,
+                          member.lastName,
+                          member.extensionName,
+                        ]
+                          .filter(Boolean)
+                          .join(" ");
+
+                        return (
+                          <Badge
+                            key={member.id}
+                            variant="secondary"
+                            className="gap-2 rounded-full px-2 py-1"
+                          >
+                            <Avatar className="size-5">
+                              <AvatarImage
+                                src={member.user.avatar ?? undefined}
+                                alt={fullName}
+                              />
+                              <AvatarFallback className="text-[10px]">
+                                {getInitials(fullName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="max-w-44 truncate">{fullName}</span>
+                            <button
+                              type="button"
+                              className="rounded-full p-0.5 hover:bg-background/70"
+                              onClick={() =>
+                                setSelectedTaggedMemberIds((current) =>
+                                  current.filter((id) => id !== member.id),
+                                )
+                              }
+                              aria-label={`Remove ${fullName}`}
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Leave this empty if the event should not be attached to
+                      member profile activity.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>

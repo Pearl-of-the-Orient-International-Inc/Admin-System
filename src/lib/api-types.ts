@@ -153,6 +153,24 @@ export interface MemberPublic {
   updatedAt: string;
 }
 
+export interface MemberTaggedEventSummary {
+  id: string;
+  taggedAt: string;
+  event: {
+    id: string;
+    name: string;
+    category: string;
+    type: string;
+    location: string | null;
+    onlineLink: string | null;
+    startsAt: string;
+    endsAt: string;
+    visibility: string;
+    organizer: string;
+    thumbnailUrl: string;
+  };
+}
+
 export interface AdminMember {
   id: string;
   uniqueId: string | null;
@@ -267,6 +285,7 @@ export interface AdminMember {
     id: string;
     title: string;
   }[];
+  taggedEvents?: MemberTaggedEventSummary[];
   signature?: {
     id: string;
     type: string;
@@ -298,6 +317,111 @@ export interface MemberEnvelopeResponse {
   code: ApiCode;
   message: string;
   data: AdminMember;
+}
+
+export interface MembershipReportTrendPoint {
+  month: string;
+  applications: number;
+  approvals: number;
+  archived: number;
+  activeTotal: number;
+  approvalRate: number;
+}
+
+export interface MembershipReportBreakdownItem {
+  label: string;
+  value: number;
+  percentage: number;
+  fill?: string;
+}
+
+export interface MembershipReportInsightItem {
+  title: string;
+  value: string;
+  detail: string;
+}
+
+export interface MembershipReportData {
+  summary: {
+    totalMembers: number;
+    activeMembers: number;
+    pendingMembers: number;
+    approvalRate: number;
+    newThisMonth: number;
+    monthOverMonthGrowth: number;
+    onboardingMembers: number;
+    archivedMembers: number;
+  };
+  trendData: MembershipReportTrendPoint[];
+  statusBreakdown: MembershipReportBreakdownItem[];
+  typeBreakdown: MembershipReportBreakdownItem[];
+  onboardingBreakdown: MembershipReportBreakdownItem[];
+  branchBreakdown: MembershipReportBreakdownItem[];
+  insights: MembershipReportInsightItem[];
+}
+
+export interface MembershipReportResponse {
+  code: ApiCode;
+  message: string;
+  data: MembershipReportData;
+}
+
+export interface MinistryReportTrendPoint {
+  month: string;
+  total: number;
+  onsite: number;
+  online: number;
+  completed: number;
+}
+
+export interface MinistryReportBreakdownItem {
+  label: string;
+  value: number;
+  percentage: number;
+  fill?: string;
+  detail?: string;
+}
+
+export interface MinistryReportUpcomingItem {
+  id: string;
+  title: string;
+  category: string;
+  type: string;
+  location: string;
+  startsAtLabel: string;
+  daysAwayLabel: string;
+}
+
+export interface MinistryReportInsightItem {
+  title: string;
+  value: string;
+  detail: string;
+}
+
+export interface MinistryReportData {
+  summary: {
+    totalEvents: number;
+    upcomingEvents: number;
+    activeBranches: number;
+    branchCoverageRate: number;
+    leadershipCoverageRate: number;
+    filledLeadershipSlots: number;
+    openLeadershipSlots: number;
+    onlineShare: number;
+  };
+  trendData: MinistryReportTrendPoint[];
+  categoryBreakdown: MinistryReportBreakdownItem[];
+  statusBreakdown: MinistryReportBreakdownItem[];
+  branchBreakdown: MinistryReportBreakdownItem[];
+  leadershipBreakdown: MinistryReportBreakdownItem[];
+  upcomingEvents: MinistryReportUpcomingItem[];
+  insights: MinistryReportInsightItem[];
+}
+
+export interface MinistryReportResponse {
+  code: ApiCode;
+  message: string;
+  data: MinistryReportData;
 }
 
 export interface CreateMemberByAdminResponse {

@@ -3,9 +3,11 @@ import type {
   CreateMemberByAdminResponse,
   MemberEnvelopeResponse,
   MemberListResponse,
+  MembershipReportResponse,
 } from "@/lib/api-types";
 import type {
   CreateMemberByAdminRequest,
+  MembershipReportQueryParams,
   MembersQueryParams,
   UpdateMemberByAdminRequest,
   UpdateMemberStatusRequest,
@@ -19,6 +21,16 @@ export async function getMembers(params: MembersQueryParams = {}) {
 export async function getPendingMembers(params: MembersQueryParams = {}) {
   const { data } = await api.get<MemberListResponse>("/members/pending", { params });
   return data;
+}
+
+export async function getMembershipReport(
+  params: MembershipReportQueryParams = {},
+) {
+  const { data } = await api.get<MembershipReportResponse>(
+    "/members/reports/membership",
+    { params },
+  );
+  return data.data;
 }
 
 export async function getMemberById(memberId: string) {

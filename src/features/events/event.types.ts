@@ -4,7 +4,29 @@ import type {
   EventStatus,
   EventType,
   EventVisibility,
+  MemberType,
 } from "@/enums";
+
+export interface EventTaggedMemberResource {
+  id: string;
+  memberId: string;
+  taggedAt: string;
+  member: {
+    id: string;
+    firstName: string;
+    middleInitial: string | null;
+    lastName: string;
+    extensionName: string | null;
+    fullName: string;
+    memberType: MemberType;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      avatar: string | null;
+    };
+  };
+}
 
 export interface EventResource {
   id: string;
@@ -23,6 +45,7 @@ export interface EventResource {
   endsAt: string;
   status: EventStatus;
   visibility: EventVisibility;
+  taggedMembers: EventTaggedMemberResource[];
   createdAt: string;
   updatedAt: string;
 }
@@ -93,6 +116,7 @@ export interface CreateEventRequest {
   description: string;
   thumbnailUrl: string;
   organizer: string;
+  taggedMemberIds?: string[];
   startsAt: string;
   endsAt: string;
   visibility: EventVisibility;

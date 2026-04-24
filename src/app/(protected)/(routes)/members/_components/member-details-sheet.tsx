@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { format } from "date-fns";
 import {
@@ -7,10 +8,13 @@ import {
   ExternalLink,
   FileText,
   LoaderCircle,
+  Link2,
   Mail,
   MapPin,
   Phone,
+  Tag,
   UserRound,
+  Video,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -270,6 +274,61 @@ export function MemberDetailsSheet({
                       ))
                     ) : (
                       <EmptyCopy text="No character references were submitted." />
+                    )}
+                  </ResumeSection>
+
+                  <ResumeSection
+                    title="Linked Events"
+                    icon={<Tag className="size-4" />}
+                  >
+                    {data.taggedEvents?.length ? (
+                      data.taggedEvents.map((taggedEvent) => (
+                        <div
+                          key={taggedEvent.id}
+                          className="rounded-xl border border-slate-200 p-4"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-1">
+                              <p className="font-semibold text-slate-900">
+                                {taggedEvent.event.name}
+                              </p>
+                              <p className="text-sm text-slate-600">
+                                {formatEnumLabel(taggedEvent.event.category)} •{" "}
+                                {formatEnumLabel(taggedEvent.event.type)}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {formatDate(taggedEvent.event.startsAt)} • Hosted by{" "}
+                                {taggedEvent.event.organizer}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                Tagged {formatDate(taggedEvent.taggedAt)}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline">
+                                {taggedEvent.event.type === "ONLINE" ? (
+                                  <Video className="size-3.5" />
+                                ) : (
+                                  <MapPin className="size-3.5" />
+                                )}
+                                {taggedEvent.event.type === "ONLINE"
+                                  ? taggedEvent.event.onlineLink
+                                    ? "Online"
+                                    : "Online setup"
+                                  : taggedEvent.event.location || "Onsite"}
+                              </Badge>
+                              <Button asChild variant="outline" size="sm">
+                                <Link href={`/events/${taggedEvent.event.id}`}>
+                                  <Link2 className="size-4" />
+                                  View event
+                                </Link>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <EmptyCopy text="No events have been linked to this member profile yet." />
                     )}
                   </ResumeSection>
 

@@ -62,6 +62,10 @@ export type MembersQueryParams = {
   includeArchived?: boolean;
 };
 
+export type MembershipReportQueryParams = {
+  months?: number;
+};
+
 export type UpdateMemberStatusRequest = {
   memberId: string;
   status: Exclude<MemberStatus, "PENDING">;

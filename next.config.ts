@@ -24,6 +24,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "api.dicebear.com",
       },
+      {
+        protocol: "https",
+        hostname: "scontent.fmnl19-1.fna.fbcdn.net"
+      }
     ],
   },
 };
