@@ -22,9 +22,9 @@ export default function AdminRouteLayout({
         {/* Sidebar */}
         <AppSidebar variant="sidebar" />
         <SidebarInset>
-          <main className="w-full min-h-screen">
+          <main className="min-h-screen min-w-0 overflow-x-hidden">
             <HashScrollHandler />
-            <div className="absolute top-0 left-0 z-0 w-full h-50 mask-[linear-gradient(to_top,transparent_25%,black_95%)]">
+            <div className="absolute top-0 left-0 z-0 h-50 w-full overflow-hidden mask-[linear-gradient(to_top,transparent_25%,black_95%)]">
               <FlickeringGrid
                 className="absolute top-0 left-0 size-full"
                 squareSize={4}
@@ -34,7 +34,7 @@ export default function AdminRouteLayout({
                 flickerChance={0.05}
               />
             </div>
-            <div className="relative">{children}</div>
+            <div className="relative min-w-0 overflow-x-hidden">{children}</div>
           </main>
         </SidebarInset>
       </SidebarProvider>

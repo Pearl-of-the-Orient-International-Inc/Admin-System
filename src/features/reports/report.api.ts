@@ -1,6 +1,14 @@
 import { api } from "@/lib/http-client";
-import type { MinistryReportResponse } from "@/lib/api-types";
-import type { MinistryReportQueryParams } from "./report.types";
+import type {
+  DashboardReportResponse,
+  MemberLocationReportResponse,
+  MinistryReportResponse,
+} from "@/lib/api-types";
+import type {
+  DashboardReportQueryParams,
+  MemberLocationReportQueryParams,
+  MinistryReportQueryParams,
+} from "./report.types";
 
 export async function getMinistryReport(
   params: MinistryReportQueryParams = {},
@@ -8,6 +16,29 @@ export async function getMinistryReport(
   const { data } = await api.get<MinistryReportResponse>("/reports/ministry", {
     params,
   });
+
+  return data.data;
+}
+
+export async function getDashboardReport(
+  params: DashboardReportQueryParams = {},
+) {
+  const { data } = await api.get<DashboardReportResponse>("/reports/dashboard", {
+    params,
+  });
+
+  return data.data;
+}
+
+export async function getMemberLocationReport(
+  params: MemberLocationReportQueryParams = {},
+) {
+  const { data } = await api.get<MemberLocationReportResponse>(
+    "/reports/dashboard/member-locations",
+    {
+      params,
+    },
+  );
 
   return data.data;
 }

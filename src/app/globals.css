@@ -288,11 +288,35 @@
     --fc-button-active-bg-color: color-mix(in oklch, var(--primary) 80%, black);
     --fc-button-active-border-color: color-mix(in oklch, var(--primary) 80%, black);
     color: var(--foreground);
+    max-width: 100%;
+  }
+
+  .events-calendar .fc .fc-view-harness,
+  .events-calendar .fc .fc-scroller-harness,
+  .events-calendar .fc .fc-scroller {
+    min-width: 0;
+  }
+
+  .events-calendar .fc .fc-header-toolbar {
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .events-calendar .fc .fc-toolbar-chunk {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .events-calendar .fc .fc-button-group {
+    flex-wrap: wrap;
   }
 
   .events-calendar .fc .fc-toolbar-title {
     font-size: 1.1rem;
     font-weight: 600;
+    white-space: normal;
   }
 
   .events-calendar .fc .fc-button {
@@ -315,6 +339,16 @@
     --fc-page-bg-color: var(--card);
     --fc-neutral-bg-color: color-mix(in oklch, var(--muted) 50%, transparent);
     --fc-list-event-hover-bg-color: color-mix(in oklch, var(--accent) 45%, transparent);
+  }
+
+  @media (max-width: 1024px) {
+    .events-calendar .fc .fc-header-toolbar {
+      align-items: flex-start;
+    }
+
+    .events-calendar .fc .fc-toolbar-title {
+      font-size: 1rem;
+    }
   }
 }
 

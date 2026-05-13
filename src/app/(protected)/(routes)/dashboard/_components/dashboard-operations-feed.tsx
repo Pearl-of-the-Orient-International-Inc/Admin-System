@@ -33,20 +33,20 @@ export function DashboardOperationsFeed({
   focusWindow: string;
 }) {
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="min-w-0 space-y-6">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xs">
         <CardHeader className="border-b">
           <CardTitle>Operations pulse</CardTitle>
           <CardDescription>{focusWindow}</CardDescription>
         </CardHeader>
-        <CardContent className="grid lg:grid-cols-3">
+        <CardContent className="grid gap-px overflow-hidden rounded-b-2xl bg-border lg:grid-cols-3">
           {healthCards.map((card) => {
             const Icon = card.icon;
 
             return (
               <div
                 key={card.title}
-                className="border bg-background/70 p-4"
+                className="bg-background/90 p-5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
@@ -68,7 +68,7 @@ export function DashboardOperationsFeed({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xs">
         <CardHeader className="border-b">
           <CardTitle>Latest activity</CardTitle>
           <CardDescription>
@@ -108,15 +108,15 @@ export function DashboardOperationsFeed({
             </div>
           ))}
 
-          <div className="rounded-xl border border-dashed bg-primary/3 p-4">
+          <div className="rounded-2xl border border-dashed border-primary/20 bg-[linear-gradient(135deg,rgba(20,82,36,0.06),rgba(185,146,64,0.05))] p-4">
             <div className="flex items-center gap-2">
               <Target className="size-4 text-primary" />
               <p className="text-sm font-medium">Suggested next action</p>
             </div>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Connect this frontend shell to the member, event, memo, and system
-              log queries next so each block can transition from placeholder
-              insight to live admin reporting.
+              Review unresolved applicant actions, confirm ministry schedules,
+              and keep branch leadership readiness visible before the next
+              service window.
             </p>
           </div>
         </CardContent>

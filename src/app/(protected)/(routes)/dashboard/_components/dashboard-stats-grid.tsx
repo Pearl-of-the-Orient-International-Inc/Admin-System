@@ -11,25 +11,25 @@ export function DashboardStatsGrid({ items }: { items: DashboardStat[] }) {
         return (
           <Card
             key={item.title}
-            className="border-border/70 bg-card/90 shadow-xs transition-colors hover:border-primary/40"
+            className="overflow-hidden border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,249,246,0.94))] shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
           >
-            <CardHeader className="pt-0!">
+            <CardHeader className="relative overflow-hidden pt-0!">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
                     {item.title}
                   </p>
-                  <CardTitle className="text-3xl tracking-tight">
+                  <CardTitle className="font-serif text-3xl tracking-tight text-primary">
                     {item.value}
                   </CardTitle>
                 </div>
-                <span className={`rounded-lg p-2 ${item.tone}`}>
+                <span className={`rounded-2xl p-2.5 shadow-xs ${item.tone}`}>
                   <Icon className="size-4" />
                 </span>
               </div>
             </CardHeader>
             <CardContent className="space-y-2 pt-0">
-              <p className="text-sm font-medium">{item.change}</p>
+              <p className="text-sm font-semibold">{item.change}</p>
               <p className="text-sm leading-6 text-muted-foreground">
                 {item.description}
               </p>

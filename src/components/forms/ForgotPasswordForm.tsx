@@ -27,19 +27,23 @@ export function ForgotPasswordForm({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
 
     try {
-      await forgotPasswordMutation.mutateAsync({ email });
+      await forgotPasswordMutation.mutateAsync({ email: normalizedEmail });
       toast({
         title: "Reset email sent",
         description: "Check your inbox for the password reset link.",
-        variant: "success"
+        variant: "success",
       });
     } catch (error: unknown) {
       const apiError = toApiError(error);
+      const isMissingRoute = apiError.code === "UNKNOWN_ERROR" && /404/i.test(apiError.message ?? "");
       toast({
         title: "Request failed",
-        description: apiError.message ?? "Unable to process forgot password request.",
+        description: isMissingRoute
+          ? "Forgot password API route was not found. Check the admin API base URL and make sure the correct backend is running."
+          : (apiError.message ?? "Unable to process forgot password request."),
         variant: "error",
       });
     }

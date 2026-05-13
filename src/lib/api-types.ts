@@ -1,5 +1,8 @@
 import {
   CivilStatus,
+  EventCategory,
+  EventStatus,
+  EventType,
   Gender,
   MemberStatus,
   MemberType,
@@ -422,6 +425,109 @@ export interface MinistryReportResponse {
   code: ApiCode;
   message: string;
   data: MinistryReportData;
+}
+
+export interface DashboardReportSummary {
+  totalMembers: number;
+  approvedMembers: number;
+  pendingApplications: number;
+  urgentPendingApplications: number;
+  thisWeeksEvents: number;
+  onlineEventsThisWeek: number;
+}
+
+export interface DashboardTrendPoint {
+  month: string;
+  applications: number;
+  approvals: number;
+  events: number;
+}
+
+export interface DashboardOnboardingItem {
+  label: string;
+  value: number;
+  percentage: number;
+  fill: string;
+}
+
+export interface DashboardCalendarEvent {
+  id: string;
+  title: string;
+  category: EventCategory;
+  type: EventType;
+  status: EventStatus;
+  startsAt: string;
+  endsAt: string;
+  date: string;
+  time: string;
+  location: string;
+  organizer: string;
+}
+
+export interface DashboardUpcomingEventResource {
+  id: string;
+  title: string;
+  description: string;
+  startsAt: string;
+  type: EventType;
+  category: EventCategory;
+  attendees: number;
+  location: string;
+}
+
+export interface DashboardReportData {
+  summary: DashboardReportSummary;
+  membershipTrend: DashboardTrendPoint[];
+  onboardingBreakdown: DashboardOnboardingItem[];
+  calendarEvents: DashboardCalendarEvent[];
+  upcomingEvents: DashboardUpcomingEventResource[];
+}
+
+export interface DashboardReportResponse {
+  code: ApiCode;
+  message: string;
+  data: DashboardReportData;
+}
+
+export interface MemberLocationBreakdownItem {
+  label: string;
+  value: number;
+  percentage: number;
+  fill: string;
+}
+
+export interface MemberLocationTrendSeries {
+  key: string;
+  label: string;
+  total: number;
+  color: string;
+}
+
+export interface MemberLocationTrendPoint {
+  month: string;
+  [key: string]: string | number;
+}
+
+export interface MemberLocationReportData {
+  summary: {
+    totalActiveMembers: number;
+    membersWithLocation: number;
+    membersWithoutLocation: number;
+    granularity: "province" | "municipality" | "barangay";
+    scopeLabel: string;
+  };
+  regionBreakdown: MemberLocationBreakdownItem[];
+  locationTrend: {
+    granularity: "province" | "municipality" | "barangay";
+    series: MemberLocationTrendSeries[];
+    data: MemberLocationTrendPoint[];
+  };
+}
+
+export interface MemberLocationReportResponse {
+  code: ApiCode;
+  message: string;
+  data: MemberLocationReportData;
 }
 
 export interface CreateMemberByAdminResponse {

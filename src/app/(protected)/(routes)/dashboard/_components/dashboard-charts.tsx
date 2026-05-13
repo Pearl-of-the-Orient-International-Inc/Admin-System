@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 
+import type { DashboardReportData } from "@/lib/api-types";
 import {
   ChartConfig,
   ChartContainer,
@@ -63,46 +63,20 @@ const stageChartConfig = {
   },
 } satisfies ChartConfig;
 
-export function DashboardCharts() {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return (
-      <div className="grid gap-6 lg:col-span-2">
-        <Card className="border-border/70 bg-card/90 shadow-xs">
-          <CardHeader className="border-b">
-            <CardTitle>Membership and events trend</CardTitle>
-            <CardDescription>
-              Monthly movement across applications, approvals, and scheduled
-              activities.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="h-90 w-full rounded-xl border bg-muted/40" />
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 bg-card/90 shadow-xs">
-          <CardHeader className="border-b">
-            <CardTitle>Onboarding queue</CardTitle>
-            <CardDescription>
-              Frontend snapshot of where applicants currently sit in the flow.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="h-[360px] w-full rounded-xl border bg-muted/40" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+export function DashboardCharts({
+  trendData = dashboardMonthlyTrends,
+  onboardingData = dashboardOnboardingStages.map((item) => ({
+    label: item.stage,
+    value: item.members,
+    percentage: 0,
+    fill: item.fill,
+  })),
+}: {
+  trendData?: DashboardReportData["membershipTrend"];
+  onboardingData?: DashboardReportData["onboardingBreakdown"];
+}) {
   return (
-    <div className="grid gap-6 lg:col-span-2">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
       <Card>
         <CardHeader className="border-b">
           <CardTitle>Membership and events trend</CardTitle>
@@ -116,7 +90,7 @@ export function DashboardCharts() {
             config={trendChartConfig}
             className="aspect-auto h-80 w-full"
           >
-            <BarChart data={dashboardMonthlyTrends} barCategoryGap="24%">
+            <BarChart data={trendData} barCategoryGap="24%">
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="month"
@@ -170,14 +144,14 @@ export function DashboardCharts() {
             className="aspect-auto h-80 w-full"
           >
             <BarChart
-              data={dashboardOnboardingStages}
+              data={onboardingData}
               layout="vertical"
               margin={{ left: 12, right: 12 }}
             >
               <CartesianGrid horizontal={false} />
               <XAxis type="number" hide />
               <YAxis
-                dataKey="stage"
+                dataKey="label"
                 type="category"
                 tickLine={false}
                 axisLine={false}
@@ -194,9 +168,9 @@ export function DashboardCharts() {
                   />
                 )}
               />
-              <Bar dataKey="members" radius={999} barSize={34}>
-                {dashboardOnboardingStages.map((entry) => (
-                  <Cell key={entry.stage} fill={entry.fill} />
+              <Bar dataKey="value" radius={999} barSize={34}>
+                {onboardingData.map((entry) => (
+                  <Cell key={entry.label} fill={entry.fill} />
                 ))}
               </Bar>
             </BarChart>

@@ -23,18 +23,19 @@ export function DashboardUpcomingEvents({
   items: DashboardUpcomingEvent[];
 }) {
   return (
-    <Card className="lg:col-span-2">
+    <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-xs">
       <CardHeader className="border-b">
         <CardTitle>Upcoming events</CardTitle>
         <CardDescription>
-          Scheduled gatherings tied to worship, intake, training, and outreach.
+          Scheduled worship, formation, outreach, and chaplaincy ministry
+          commitments.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-3 overflow-y-auto h-100 no-scrollbar pt-6">
+      <CardContent className="grid h-100 gap-3 overflow-y-auto pt-6 no-scrollbar">
         {items.map((item) => (
           <div
             key={item.id}
-            className="rounded-xl border bg-background/70 p-3.5 transition-colors hover:border-primary/35"
+            className="rounded-2xl border bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(247,249,246,0.92))] p-4 transition-colors hover:border-primary/35"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">

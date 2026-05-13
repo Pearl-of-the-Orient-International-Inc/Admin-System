@@ -38,6 +38,55 @@ export function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+export async function readImageFileAsOptimizedDataUrl(
+  file: File,
+  {
+    maxWidth = 840,
+    maxHeight = 320,
+    mimeType = "image/png",
+    quality,
+  }: {
+    maxWidth?: number;
+    maxHeight?: number;
+    mimeType?: string;
+    quality?: number;
+  } = {},
+): Promise<string> {
+  const sourceDataUrl = await readFileAsDataUrl(file);
+
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => {
+      const scale = Math.min(
+        1,
+        maxWidth / image.width || 1,
+        maxHeight / image.height || 1,
+      );
+      const targetWidth = Math.max(1, Math.round(image.width * scale));
+      const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Failed to prepare the uploaded image."));
+        return;
+      }
+
+      context.clearRect(0, 0, targetWidth, targetHeight);
+      context.drawImage(image, 0, 0, targetWidth, targetHeight);
+      resolve(canvas.toDataURL(mimeType, quality));
+    };
+
+    image.onerror = () =>
+      reject(new Error("Failed to process the uploaded image."));
+    image.src = sourceDataUrl;
+  });
+}
+
 export function splitName(fullName?: string | null): {
   firstName: string;
   lastName: string;
