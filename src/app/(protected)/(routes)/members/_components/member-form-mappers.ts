@@ -120,6 +120,16 @@ export const mapFormToMemberPayload = (
   if (!form.birthday) {
     throw new Error("Please enter the member's date of birth.");
   }
+  const endorsedBy = form.characterReferences[0];
+  if (
+    !endorsedBy?.name.trim() ||
+    !endorsedBy.position.trim() ||
+    !endorsedBy.contactNumber.trim()
+  ) {
+    throw new Error(
+      "Please complete the endorsed by name, relationship, and contact number.",
+    );
+  }
 
   const location = splitRegionSummary(form.regionProvince);
 
@@ -331,11 +341,7 @@ export const mapMemberToFormState = (member: AdminMember): ApplicationFormState 
     characterReferences:
       characterReferences.length > 0
         ? characterReferences
-        : [
-            { name: "", position: "", contactNumber: "" },
-            { name: "", position: "", contactNumber: "" },
-            { name: "", position: "", contactNumber: "" },
-          ],
+        : [{ name: "", position: "", contactNumber: "" }],
     photoUrl: "",
     signatureUrl: member.signature?.signatureData ?? "",
     declarationTruthConfirmed: false,
