@@ -104,7 +104,10 @@ export default function AdminMemberFormPage() {
       } else {
         await updateMemberMutation.mutateAsync({
           memberId: routeMemberId,
-          payload,
+          payload: {
+            ...payload,
+            profileBannerUrl: existingMember?.profileBannerUrl ?? undefined,
+          },
         });
         toast({
           title: "Member updated",

@@ -10,6 +10,7 @@ import {
   IconLayoutDashboard,
   IconLogs,
   IconMessageCircle,
+  IconNotebook,
   IconPhotoCheck,
   IconPray,
   IconUserCog,
@@ -45,6 +46,10 @@ const data = {
         {
           title: "All Members",
           url: "/members",
+        },
+        {
+          title: "Certifications & Recognitions",
+          url: "/members/certifications",
         },
         {
           title: "Pending Applications",
@@ -142,6 +147,11 @@ const data = {
       title: "Backup Database",
       url: "/backup-database",
       icon: IconDatabase,
+    },
+    {
+      title: "Documentation",
+      url: "/documentation",
+      icon: IconNotebook,
     },
   ],
 };

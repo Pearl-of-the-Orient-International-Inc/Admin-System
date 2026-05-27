@@ -223,6 +223,7 @@ export const mapAdminMemberToUpdatePayload = (
     extensionName: getOptional(member.extensionName),
     memberType: member.memberType,
     badgeNumber: getOptional(member.badgeNumber),
+    profileBannerUrl: getOptional(member.profileBannerUrl),
     mobilePhoneNumber: getOptional(member.mobilePhoneNumber),
     homeAddress: getOptional(member.homeAddress),
     civilStatus: member.civilStatus ?? undefined,

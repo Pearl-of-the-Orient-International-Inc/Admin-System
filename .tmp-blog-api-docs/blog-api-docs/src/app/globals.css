@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-white text-gray-900 dark:bg-[#1A1D23] dark:text-gray-100;
+  font-family: var(--font-inter);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+/* Code blocks */
+pre {
+  @apply overflow-x-auto;
+}
+
+code {
+  font-family: var(--font-mono);
+}
+
+/* Prose content */
+.prose h2 {
+  @apply text-2xl font-bold text-gray-900 dark:text-white mt-10 mb-4 pt-6 border-t border-gray-200 dark:border-gray-700;
+}
+
+.prose h3 {
+  @apply text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3;
+}
+
+.prose p {
+  @apply text-gray-700 dark:text-gray-300 leading-relaxed mb-4;
+}
+
+.prose ul {
+  @apply list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300 mb-4;
+}
+
+.prose li {
+  @apply leading-relaxed;
+}
+
+.prose a {
+  @apply text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline-offset-2 hover:underline;
+}
+
+.prose code:not(pre code) {
+  @apply bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+/* Syntax highlight base */
+.code-block {
+  @apply bg-[#1E2028] rounded-lg overflow-hidden;
+}
+
+.code-block pre {
+  @apply p-4 text-sm leading-relaxed;
+  font-family: var(--font-mono);
+}
+
+/* Token colors */
+.token-keyword { @apply text-[#C792EA]; }
+.token-string { @apply text-[#C3E88D]; }
+.token-comment { @apply text-[#546E7A]; }
+.token-number { @apply text-[#F78C6C]; }
+.token-function { @apply text-[#82AAFF]; }
+.token-operator { @apply text-[#89DDFF]; }
+.token-plain { @apply text-[#CDD3DE]; }
+.token-url { @apply text-[#C3E88D]; }
+.token-method { @apply text-[#89DDFF]; }
+.token-path { @apply text-[#EEFFFF]; }

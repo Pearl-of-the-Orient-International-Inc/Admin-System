@@ -39,6 +39,37 @@ function mapNewsBlogRecord(
   };
 }
 
+export async function syncNewsBlogToFacebook({
+  action,
+  newsBlog,
+}: {
+  action: "create" | "update" | "manual";
+  newsBlog: NewsBlogRecord;
+}) {
+  const response = await fetch("/api/facebook/news-blogs/sync", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action,
+      newsBlog,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { message?: string; postId?: string }
+    | null;
+
+  if (!response.ok) {
+    throw new Error(
+      payload?.message || "Unable to publish this update to Facebook.",
+    );
+  }
+
+  return payload;
+}
+
 export async function getNewsBlogs(params: NewsBlogQueryParams = {}) {
   const { data } = await api.get<NewsBlogListResponse>("/news-blogs", {
     params,

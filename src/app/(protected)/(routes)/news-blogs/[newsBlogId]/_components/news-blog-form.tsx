@@ -35,6 +35,7 @@ import {
   useUpdateNewsBlogMutation,
   useUploadNewsBlogMediaMutation,
 } from "@/features/news-blogs/news-blog.hooks";
+import { syncNewsBlogToFacebook } from "@/features/news-blogs/news-blog.api";
 import type { NewsBlogRecord } from "@/features/news-blogs/news-blog.types";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentUserQuery } from "@/features/auth/auth.hooks";
@@ -65,6 +66,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import {
   Sheet,
   SheetContent,
@@ -129,6 +131,8 @@ export function NewsBlogForm({
   );
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+  const [shouldSyncToFacebook, setShouldSyncToFacebook] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -259,6 +263,10 @@ export function NewsBlogForm({
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
     try {
       const pendingMediaItems = mediaItems.filter((item) => item.file);
       const uploadedMedia = pendingMediaItems.length
@@ -289,23 +297,56 @@ export function NewsBlogForm({
         publishedAt: null,
       };
 
+      let savedNewsBlog: NewsBlogRecord;
+
       if (mode === "create") {
-        await createNewsBlogMutation.mutateAsync(payload);
+        savedNewsBlog = await createNewsBlogMutation.mutateAsync(payload);
       } else if (newsBlogId) {
-        await updateNewsBlogMutation.mutateAsync({
+        savedNewsBlog = await updateNewsBlogMutation.mutateAsync({
           id: newsBlogId,
           payload,
         });
+      } else {
+        throw new Error("News/blog post ID is required for updates.");
+      }
+
+      let facebookSyncError: string | null = null;
+
+      if (shouldSyncToFacebook) {
+        try {
+          await syncNewsBlogToFacebook({
+            action: mode,
+            newsBlog: savedNewsBlog,
+          });
+        } catch (error) {
+          facebookSyncError =
+            error instanceof Error
+              ? error.message
+              : "The post was saved, but Facebook sync failed.";
+        }
       }
 
       toast({
         title: mode === "create" ? "Post created" : "Post updated",
         description:
           mode === "create"
-            ? "The news/blog post was created successfully."
-            : "The news/blog post changes were saved successfully.",
+            ? shouldSyncToFacebook && !facebookSyncError
+              ? "The news/blog post was created and posted to the Facebook Page."
+              : "The news/blog post was created successfully."
+            : shouldSyncToFacebook && !facebookSyncError
+              ? "The news/blog post changes were saved and posted to the Facebook Page."
+              : "The news/blog post changes were saved successfully.",
         variant: "success",
       });
+
+      if (facebookSyncError) {
+        toast({
+          title: "Facebook sync skipped",
+          description: facebookSyncError,
+          variant: "warning",
+        });
+      }
+
       router.push("/news-blogs");
     } catch (error) {
       const fallbackMessage =
@@ -319,6 +360,8 @@ export function NewsBlogForm({
           "Unable to save the news/blog post right now.",
         variant: "error",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -347,9 +390,13 @@ export function NewsBlogForm({
             <Newspaper className="size-4" />
             Open editor
           </Button>
-          <Button onClick={handleSubmit} disabled={isInvalid}>
+          <Button onClick={handleSubmit} disabled={isInvalid || isSubmitting}>
             <Save className="size-4" />
-            {mode === "create" ? "Create post" : "Save changes"}
+            {isSubmitting
+              ? "Saving..."
+              : mode === "create"
+                ? "Create post"
+                : "Save changes"}
           </Button>
         </div>
       </div>
@@ -814,6 +861,40 @@ export function NewsBlogForm({
               <CardContent className="space-y-4 px-5">
                 <div className="flex items-start gap-3">
                   <div className="rounded-xl bg-background/70 p-2">
+                    <Globe className="size-4 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xl font-semibold">Facebook Page Sync</p>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically publish a Facebook Page feed post after this
+                      news entry is created or updated.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start justify-between gap-4 rounded-xl border bg-background/60 p-4">
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">
+                      Auto-post this save to the Facebook Page
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Create and update actions publish a new Facebook Page feed
+                      post. This does not overwrite an older Facebook post.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={shouldSyncToFacebook}
+                    onCheckedChange={setShouldSyncToFacebook}
+                    aria-label="Toggle Facebook Page sync"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={cn(surfaceClass, "rounded-lg! py-4")}>
+              <CardContent className="space-y-4 px-5">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-background/70 p-2">
                     <Upload className="size-4 text-muted-foreground" />
                   </div>
                   <div>
@@ -1110,9 +1191,13 @@ export function NewsBlogForm({
                   Cancel
                 </Link>
               </Button>
-              <Button onClick={handleSubmit} disabled={isInvalid}>
+              <Button onClick={handleSubmit} disabled={isInvalid || isSubmitting}>
                 <Save className="size-4" />
-                {mode === "create" ? "Create post" : "Save changes"}
+                {isSubmitting
+                  ? "Saving..."
+                  : mode === "create"
+                    ? "Create post"
+                    : "Save changes"}
               </Button>
             </div>
           </div>

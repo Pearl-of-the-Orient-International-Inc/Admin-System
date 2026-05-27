@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   Archive,
   Copy,
   Eye,
+  Globe,
   MoreHorizontal,
   Rocket,
   SquarePen,
@@ -16,6 +18,7 @@ import {
   usePublishNewsBlogMutation,
   useRetrieveNewsBlogMutation,
 } from "@/features/news-blogs/news-blog.hooks";
+import { syncNewsBlogToFacebook } from "@/features/news-blogs/news-blog.api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +43,7 @@ export function NewsBlogsActionsMenu({
   const publishNewsBlogMutation = usePublishNewsBlogMutation();
   const archiveNewsBlogMutation = useArchiveNewsBlogMutation();
   const retrieveNewsBlogMutation = useRetrieveNewsBlogMutation();
+  const [isSyncingToFacebook, setIsSyncingToFacebook] = useState(false);
 
   const handleCopyLink = async () => {
     try {
@@ -106,6 +110,37 @@ export function NewsBlogsActionsMenu({
     }
   };
 
+  const handleSyncToFacebook = async () => {
+    if (isSyncingToFacebook) return;
+
+    setIsSyncingToFacebook(true);
+
+    try {
+      await syncNewsBlogToFacebook({
+        action: "manual",
+        newsBlog: post,
+      });
+
+      toast({
+        title: "Synced to Facebook",
+        description:
+          "The selected news/blog post was published to the Facebook Page with the announcement template.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Facebook sync failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unable to sync this post to Facebook right now.",
+        variant: "error",
+      });
+    } finally {
+      setIsSyncingToFacebook(false);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -135,6 +170,15 @@ export function NewsBlogsActionsMenu({
           <DropdownMenuItem onClick={handlePublish}>
             <Rocket className="size-4" />
             Publish post
+          </DropdownMenuItem>
+        ) : null}
+        {post.isActive ? (
+          <DropdownMenuItem
+            onClick={handleSyncToFacebook}
+            disabled={isSyncingToFacebook}
+          >
+            <Globe className="size-4" />
+            {isSyncingToFacebook ? "Syncing..." : "Sync to Facebook"}
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />

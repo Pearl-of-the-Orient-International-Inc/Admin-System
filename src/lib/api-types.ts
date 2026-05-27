@@ -185,6 +185,7 @@ export interface AdminMember {
   lastName: string;
   extensionName: string | null;
   badgeNumber: string | null;
+  profileBannerUrl: string | null;
   mobilePhoneNumber: string | null;
   homeAddress: string | null;
   civilStatus: CivilStatus | null;
