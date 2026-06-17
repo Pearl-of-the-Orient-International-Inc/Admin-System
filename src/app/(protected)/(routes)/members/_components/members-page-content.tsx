@@ -92,14 +92,18 @@ import { Button } from "@/components/ui/button";
 import { SummaryStatCard } from "@/components/SummaryStatCard";
 import {
   useArchiveMemberMutation,
+  useChangeMemberPasswordByAdminMutation,
+  useDeleteMemberMutation,
   useMembersQuery,
   useRetrieveMemberMutation,
+  useUpdateMemberUniqueIdMutation,
   useUpdateMemberMutation,
   useUpdateMemberStatusMutation,
 } from "@/features/members/member.hooks";
 import { useToast } from "@/hooks/use-toast";
 import { MemberStatus, MemberType } from "@/enums";
 import { mapAdminMemberToUpdatePayload } from "./member-form-mappers";
+import { toApiError } from "@/lib/http-client";
 
 type MembersViewMode = "grid" | "table";
 type StatusTabValue = "ALL" | "PENDING" | "APPROVED" | "REJECTED" | "ARCHIVED";
@@ -139,14 +143,24 @@ export function MembersPageContent() {
   const archiveMemberMutation = useArchiveMemberMutation();
   const retrieveMemberMutation = useRetrieveMemberMutation();
   const updateMemberMutation = useUpdateMemberMutation();
+  const updateMemberUniqueIdMutation = useUpdateMemberUniqueIdMutation();
   const updateMemberStatusMutation = useUpdateMemberStatusMutation();
+  const changeMemberPasswordMutation = useChangeMemberPasswordByAdminMutation();
+  const deleteMemberMutation = useDeleteMemberMutation();
   const [isBatchQrPending, setIsBatchQrPending] = useState(false);
   const [updatingMemberTypeId, setUpdatingMemberTypeId] = useState<
+    string | null
+  >(null);
+  const [updatingMemberUniqueIdId, setUpdatingMemberUniqueIdId] = useState<
     string | null
   >(null);
   const [updatingMemberStatusId, setUpdatingMemberStatusId] = useState<
     string | null
   >(null);
+  const [changingMemberPasswordId, setChangingMemberPasswordId] = useState<
+    string | null
+  >(null);
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
 
   const members = useMemo(
     () => data?.data.map(mapMemberToRecord) ?? [],
@@ -631,6 +645,66 @@ export function MembersPageContent() {
     }
   };
 
+  const handleUpdateMemberUniqueId = async (
+    member: MemberRecord,
+    uniqueId: string,
+  ) => {
+    const normalizedUniqueId = uniqueId.trim();
+
+    if (!normalizedUniqueId) {
+      toast({
+        variant: "warning",
+        title: "Member ID required",
+        description: "Please enter a member ID before saving.",
+      });
+      throw new Error("Member ID is required.");
+    }
+
+    if (member.uniqueId === normalizedUniqueId) {
+      return;
+    }
+
+    const duplicateMember = members.find(
+      (item) =>
+        item.memberId !== member.memberId &&
+        item.uniqueId?.trim().toLowerCase() ===
+          normalizedUniqueId.toLowerCase(),
+    );
+
+    if (duplicateMember) {
+      toast({
+        variant: "error",
+        title: "Member ID already exists",
+        description: `${normalizedUniqueId} is already assigned to ${duplicateMember.fullName}.`,
+      });
+      throw new Error("Member ID already exists.");
+    }
+
+    try {
+      setUpdatingMemberUniqueIdId(member.memberId);
+      await updateMemberUniqueIdMutation.mutateAsync({
+        memberId: member.memberId,
+        uniqueId: normalizedUniqueId,
+      });
+      toast({
+        variant: "success",
+        title: "Member ID updated",
+        description: `${member.fullName} is now assigned ${normalizedUniqueId}.`,
+      });
+    } catch (error) {
+      const apiError = toApiError(error);
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description:
+          apiError.message ?? "Unable to update the member ID right now.",
+      });
+      throw new Error(apiError.message ?? "Unable to update member ID.");
+    } finally {
+      setUpdatingMemberUniqueIdId(null);
+    }
+  };
+
   const handleUpdateMemberStatus = async (
     member: MemberRecord,
     status: "Approved" | "Pending" | "Rejected" | "Archived",
@@ -707,6 +781,60 @@ export function MembersPageContent() {
     });
   };
 
+  const handleChangeMemberPassword = async (
+    member: MemberRecord,
+    password: string,
+    confirmPassword: string,
+  ) => {
+    try {
+      setChangingMemberPasswordId(member.memberId);
+      await changeMemberPasswordMutation.mutateAsync({
+        memberId: member.memberId,
+        password,
+        confirmPassword,
+      });
+      toast({
+        variant: "success",
+        title: "Password updated",
+        description: `${member.fullName}'s password has been changed.`,
+      });
+    } catch (error) {
+      const apiError = toApiError(error);
+      toast({
+        variant: "error",
+        title: "Password update failed",
+        description:
+          apiError.message ?? "Unable to update the member password right now.",
+      });
+      throw new Error(apiError.message ?? "Unable to update member password.");
+    } finally {
+      setChangingMemberPasswordId(null);
+    }
+  };
+
+  const handleDeleteMember = async (member: MemberRecord) => {
+    try {
+      setDeletingMemberId(member.memberId);
+      await deleteMemberMutation.mutateAsync(member.memberId);
+      toast({
+        variant: "success",
+        title: "Member deleted",
+        description: `${member.fullName} has been permanently deleted.`,
+      });
+    } catch (error) {
+      const apiError = toApiError(error);
+      toast({
+        variant: "error",
+        title: "Delete failed",
+        description:
+          apiError.message ?? "Unable to delete the member right now.",
+      });
+      throw new Error(apiError.message ?? "Unable to delete member.");
+    } finally {
+      setDeletingMemberId(null);
+    }
+  };
+
   const handleConfirmPendingMemberAction = async () => {
     if (!pendingMemberAction) return;
 
@@ -727,6 +855,8 @@ export function MembersPageContent() {
       ? "Archiving member records..."
       : retrieveMemberMutation.isPending
         ? "Retrieving member records..."
+        : deleteMemberMutation.isPending
+          ? "Deleting member record..."
         : "";
   const isBlockingActionActive = Boolean(blockingActionLabel);
 
@@ -903,7 +1033,10 @@ export function MembersPageContent() {
                         sorting={tableSorting}
                         onSortingChange={setTableSorting}
                         updatingMemberTypeId={updatingMemberTypeId}
+                        updatingMemberUniqueIdId={updatingMemberUniqueIdId}
                         updatingMemberStatusId={updatingMemberStatusId}
+                        changingMemberPasswordId={changingMemberPasswordId}
+                        deletingMemberId={deletingMemberId}
                         isBatchQrPending={isBatchQrPending}
                         isBulkActionPending={isArchiveActionPending}
                         isRowArchiveActionPending={isArchiveActionPending}
@@ -914,8 +1047,11 @@ export function MembersPageContent() {
                         onAssignOffice={handleAssignOffice}
                         onRequestToggleMemberArchiveState={handleSuspendMember}
                         onGenerateQrCode={handleGenerateQrCode}
+                        onUpdateMemberUniqueId={handleUpdateMemberUniqueId}
                         onUpdateMemberType={handleUpdateMemberType}
                         onUpdateMemberStatus={handleUpdateMemberStatus}
+                        onChangeMemberPassword={handleChangeMemberPassword}
+                        onDeleteMember={handleDeleteMember}
                       />
                     )}
                     {paginationControls}

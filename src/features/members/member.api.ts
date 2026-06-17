@@ -10,6 +10,8 @@ import type {
   MembershipReportQueryParams,
   MembersQueryParams,
   UpdateMemberByAdminRequest,
+  UpdateMemberUniqueIdRequest,
+  ChangeMemberPasswordByAdminRequest,
   UpdateMemberStatusRequest,
 } from "./member.types";
 
@@ -68,6 +70,36 @@ export async function updateMemberStatus({
     { status },
   );
   return data.data;
+}
+
+export async function updateMemberUniqueId({
+  memberId,
+  uniqueId,
+}: UpdateMemberUniqueIdRequest) {
+  const { data } = await api.patch<MemberEnvelopeResponse>(
+    `/members/${encodeURIComponent(memberId)}/unique-id`,
+    { uniqueId },
+  );
+  return data.data;
+}
+
+export async function changeMemberPasswordByAdmin({
+  memberId,
+  password,
+  confirmPassword,
+}: ChangeMemberPasswordByAdminRequest) {
+  const { data } = await api.patch<{ code: string; message: string }>(
+    `/members/${encodeURIComponent(memberId)}/password`,
+    { password, confirmPassword },
+  );
+  return data;
+}
+
+export async function deleteMember(memberId: string) {
+  const { data } = await api.delete<{ code: string; message: string }>(
+    `/members/${encodeURIComponent(memberId)}`,
+  );
+  return data;
 }
 
 export async function archiveMember(memberId: string) {

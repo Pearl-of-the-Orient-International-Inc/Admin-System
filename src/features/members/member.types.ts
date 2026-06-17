@@ -73,3 +73,14 @@ export type UpdateMemberStatusRequest = {
 };
 
 export type UpdateMemberByAdminRequest = CreateMemberByAdminRequest;
+
+export type UpdateMemberUniqueIdRequest = {
+  memberId: string;
+  uniqueId: string;
+};
+
+export type ChangeMemberPasswordByAdminRequest = {
+  memberId: string;
+  password: string;
+  confirmPassword: string;
+};

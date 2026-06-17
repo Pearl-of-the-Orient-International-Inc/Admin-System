@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import {
   ArrowDownUp,
@@ -25,6 +26,24 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -39,6 +58,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { memberTypeFilterOptions, type MemberRecord } from "./members-data";
 import Image from "next/image";
 import { useCurrentUserQuery } from "@/features/auth/auth.hooks";
@@ -55,6 +76,9 @@ type MembersDataTableProps = {
   isRowArchiveActionPending?: boolean;
   updatingMemberTypeId?: string | null;
   updatingMemberStatusId?: string | null;
+  updatingMemberUniqueIdId?: string | null;
+  changingMemberPasswordId?: string | null;
+  deletingMemberId?: string | null;
   onBatchDownloadQrCodes: (members: MemberRecord[]) => void;
   onRequestBulkAction: (memberIds: string[]) => void;
   onViewDetails: (member: MemberRecord) => void;
@@ -62,6 +86,10 @@ type MembersDataTableProps = {
   onAssignOffice: (member: MemberRecord) => void;
   onRequestToggleMemberArchiveState: (member: MemberRecord) => void;
   onGenerateQrCode: (member: MemberRecord) => void;
+  onUpdateMemberUniqueId?: (
+    member: MemberRecord,
+    uniqueId: string,
+  ) => Promise<void>;
   onUpdateMemberType: (
     member: MemberRecord,
     memberType: MemberType,
@@ -70,6 +98,12 @@ type MembersDataTableProps = {
     member: MemberRecord,
     status: EditableMemberStatus,
   ) => Promise<void>;
+  onChangeMemberPassword?: (
+    member: MemberRecord,
+    password: string,
+    confirmPassword: string,
+  ) => Promise<void>;
+  onDeleteMember?: (member: MemberRecord) => Promise<void>;
 };
 
 export function MembersDataTable({
@@ -82,6 +116,9 @@ export function MembersDataTable({
   isRowArchiveActionPending = false,
   updatingMemberTypeId = null,
   updatingMemberStatusId = null,
+  updatingMemberUniqueIdId = null,
+  changingMemberPasswordId = null,
+  deletingMemberId = null,
   onBatchDownloadQrCodes,
   onRequestBulkAction,
   onViewDetails,
@@ -89,8 +126,11 @@ export function MembersDataTable({
   onAssignOffice,
   onRequestToggleMemberArchiveState,
   onGenerateQrCode,
+  onUpdateMemberUniqueId,
   onUpdateMemberType,
   onUpdateMemberStatus,
+  onChangeMemberPassword,
+  onDeleteMember,
 }: MembersDataTableProps) {
   const { data: currentUser, isLoading: isCurrentUserLoading } =
     useCurrentUserQuery();
@@ -98,9 +138,27 @@ export function MembersDataTable({
   const [editingMemberTypeId, setEditingMemberTypeId] = useState<string | null>(
     null,
   );
+  const [editingMemberUniqueIdId, setEditingMemberUniqueIdId] = useState<
+    string | null
+  >(null);
   const [editingMemberStatusId, setEditingMemberStatusId] = useState<
     string | null
   >(null);
+  const [passwordDialogMember, setPasswordDialogMember] =
+    useState<MemberRecord | null>(null);
+  const [deleteDialogMember, setDeleteDialogMember] =
+    useState<MemberRecord | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const canAccess =
+    !isCurrentUserLoading &&
+    currentUser?.position === "IT" &&
+    currentUser?.role === "ADMIN";
+  const canEditMemberUniqueId = canAccess && Boolean(onUpdateMemberUniqueId);
+  const canChangeMemberPassword = canAccess && Boolean(onChangeMemberPassword);
+  const canDeleteMember = canAccess && Boolean(onDeleteMember);
 
   const columns = useMemo<ColumnDef<MemberRecord>[]>(
     () => [
@@ -115,6 +173,24 @@ export function MembersDataTable({
             Member ID
             <ArrowDownUp className="size-4" />
           </Button>
+        ),
+        cell: ({ row }) => (
+          <EditableMemberUniqueIdCell
+            member={row.original}
+            members={data}
+            canAccess={canEditMemberUniqueId}
+            isEditing={editingMemberUniqueIdId === row.original.memberId}
+            isPending={updatingMemberUniqueIdId === row.original.memberId}
+            onStartEditing={() =>
+              setEditingMemberUniqueIdId(row.original.memberId)
+            }
+            onCancelEditing={() => setEditingMemberUniqueIdId(null)}
+            onSave={async (uniqueId) => {
+              if (!onUpdateMemberUniqueId) return;
+              await onUpdateMemberUniqueId(row.original, uniqueId);
+              setEditingMemberUniqueIdId(null);
+            }}
+          />
         ),
       },
       {
@@ -158,6 +234,7 @@ export function MembersDataTable({
         cell: ({ row }) => (
           <EditableMemberTypeCell
             member={row.original}
+            canAccess={canAccess}
             isEditing={editingMemberTypeId === row.original.memberId}
             isPending={updatingMemberTypeId === row.original.memberId}
             onStartEditing={() => setEditingMemberTypeId(row.original.memberId)}
@@ -202,10 +279,16 @@ export function MembersDataTable({
       },
     ],
     [
+      canAccess,
+      canEditMemberUniqueId,
+      data,
+      editingMemberUniqueIdId,
       editingMemberStatusId,
       editingMemberTypeId,
+      onUpdateMemberUniqueId,
       onUpdateMemberStatus,
       onUpdateMemberType,
+      updatingMemberUniqueIdId,
       updatingMemberStatusId,
       updatingMemberTypeId,
     ],
@@ -231,25 +314,57 @@ export function MembersDataTable({
     );
   }
 
-  const canAccess =
-    !isCurrentUserLoading &&
-    currentUser?.position === "IT" &&
-    currentUser?.role === "ADMIN";
+  const isPasswordChangePending =
+    Boolean(passwordDialogMember) &&
+    changingMemberPasswordId === passwordDialogMember?.memberId;
+  const isDeletePending =
+    Boolean(deleteDialogMember) &&
+    deletingMemberId === deleteDialogMember?.memberId;
+
+  const closePasswordDialog = () => {
+    if (isPasswordChangePending) return;
+    setPasswordDialogMember(null);
+    setPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+  };
+
+  const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!passwordDialogMember) return;
+
+    if (password !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setPasswordError(null);
+    if (!onChangeMemberPassword) return;
+
+    await onChangeMemberPassword(
+      passwordDialogMember,
+      password,
+      confirmPassword,
+    );
+    closePasswordDialog();
+  };
 
   return (
-    <GlobalDataTable
-      data={data}
-      columns={columns}
-      hideSearch
-      hideFooter
-      manualSorting
-      sorting={sorting}
-      onSortingChange={onSortingChange}
-      filterPlaceholder="Search member name, email, branch, or status..."
-      emptyMessage="No members found."
-      exportFileName="members"
-      renderSelectedActions={(rows, { clearSelection }) => (
-        <>
+    <>
+      <GlobalDataTable
+        data={data}
+        columns={columns}
+        hideSearch
+        hideFooter
+        manualSorting
+        sorting={sorting}
+        onSortingChange={onSortingChange}
+        filterPlaceholder="Search member name, email, branch, or status..."
+        emptyMessage="No members found."
+        exportFileName="members"
+        renderSelectedActions={(rows, { clearSelection }) => (
+          <>
           <Button
             variant="outline"
             size="xs"
@@ -285,10 +400,10 @@ export function MembersDataTable({
                 : "Retrieving..."
               : bulkActionLabel}
           </Button>
-        </>
-      )}
-      cellAction={(row) => (
-        <DropdownMenu>
+          </>
+        )}
+        cellAction={(row) => (
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -304,8 +419,15 @@ export function MembersDataTable({
               <Edit className="size-4" />
               Edit
             </DropdownMenuItem>
-            {canAccess && (
-              <DropdownMenuItem>
+            {canChangeMemberPassword && (
+              <DropdownMenuItem
+                onClick={() => {
+                  setPasswordDialogMember(row.original);
+                  setPassword("");
+                  setConfirmPassword("");
+                  setPasswordError(null);
+                }}
+              >
                 <LockKeyhole className="size-4" />
                 Change password
               </DropdownMenuItem>
@@ -348,9 +470,10 @@ export function MembersDataTable({
                   ? "Retrieve member"
                   : "Suspend member"}
             </DropdownMenuItem>
-            {canAccess && (
+            {canDeleteMember && (
               <DropdownMenuItem
                 variant="destructive"
+                onClick={() => setDeleteDialogMember(row.original)}
               >
                 <Trash2 className="size-4" />
                 Delete member
@@ -359,7 +482,133 @@ export function MembersDataTable({
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-    />
+      />
+
+      <Dialog
+        open={Boolean(passwordDialogMember)}
+        onOpenChange={(open) => {
+          if (!open) closePasswordDialog();
+        }}
+      >
+        <DialogContent>
+          <form onSubmit={handlePasswordSubmit} className="space-y-5">
+            <DialogHeader>
+              <DialogTitle>Change member password</DialogTitle>
+              <DialogDescription>
+                Set a new password for {passwordDialogMember?.fullName}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="member-password">New password</Label>
+                <Input
+                  id="member-password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                  disabled={isPasswordChangePending}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="member-confirm-password">
+                  Confirm password
+                </Label>
+                <Input
+                  id="member-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                  aria-invalid={Boolean(passwordError)}
+                  disabled={isPasswordChangePending}
+                  required
+                />
+                {passwordError ? (
+                  <p className="text-destructive text-sm">{passwordError}</p>
+                ) : null}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={closePasswordDialog}
+                disabled={isPasswordChangePending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isPasswordChangePending}>
+                {isPasswordChangePending ? (
+                  <>
+                    <LoaderCircle className="size-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update password"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(deleteDialogMember)}
+        onOpenChange={(open) => {
+          if (!open && !isDeletePending) {
+            setDeleteDialogMember(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialogMember
+                ? `${deleteDialogMember.fullName} and the linked member account will be permanently deleted.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              size="sm"
+              disabled={isDeletePending}
+              onClick={() => setDeleteDialogMember(null)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              size="sm"
+              variant="destructive"
+              disabled={isDeletePending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!deleteDialogMember) return;
+                if (!onDeleteMember) return;
+
+                void onDeleteMember(deleteDialogMember).then(() => {
+                  setDeleteDialogMember(null);
+                });
+              }}
+            >
+              {isDeletePending ? (
+                <>
+                  <LoaderCircle className="size-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete member"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -367,6 +616,7 @@ type EditableMemberStatus = "Approved" | "Pending" | "Rejected" | "Archived";
 
 function EditableMemberTypeCell({
   member,
+  canAccess,
   isEditing,
   isPending,
   onStartEditing,
@@ -374,12 +624,17 @@ function EditableMemberTypeCell({
   onSave,
 }: {
   member: MemberRecord;
+  canAccess: boolean;
   isEditing: boolean;
   isPending: boolean;
   onStartEditing: () => void;
   onCancelEditing: () => void;
   onSave: (memberType: MemberType) => Promise<void>;
 }) {
+  if (!canAccess) {
+    return <span className="truncate max-w-40">{member.memberType}</span>;
+  }
+
   if (isEditing) {
     return (
       <div className="max-w-40 truncate">
@@ -415,17 +670,141 @@ function EditableMemberTypeCell({
     <button
       type="button"
       className="group inline-flex min-w-0 items-center gap-2 rounded-md px-2 py-1 -mx-2 hover:bg-muted"
-      onDoubleClick={() => {
-        onStartEditing();
-      }}
+      onClick={onStartEditing}
       disabled={isPending}
-      title="Double-click to edit member type"
+      title="Click to edit member type"
     >
       <span className="truncate max-w-40">{member.memberType}</span>
       {isPending ? (
         <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
       ) : (
         <ChevronsUpDown className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      )}
+    </button>
+  );
+}
+
+function EditableMemberUniqueIdCell({
+  member,
+  members,
+  canAccess,
+  isEditing,
+  isPending,
+  onStartEditing,
+  onCancelEditing,
+  onSave,
+}: {
+  member: MemberRecord;
+  members: MemberRecord[];
+  canAccess: boolean;
+  isEditing: boolean;
+  isPending: boolean;
+  onStartEditing: () => void;
+  onCancelEditing: () => void;
+  onSave: (uniqueId: string) => Promise<void>;
+}) {
+  const [draftUniqueId, setDraftUniqueId] = useState(member.uniqueId ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  const displayValue = member.uniqueId || "Not set";
+
+  const validate = (value: string) => {
+    const normalizedValue = value.trim();
+
+    if (!normalizedValue) {
+      return "Member ID is required.";
+    }
+
+    const duplicate = members.some(
+      (item) =>
+        item.memberId !== member.memberId &&
+        item.uniqueId?.trim().toLowerCase() === normalizedValue.toLowerCase(),
+    );
+
+    if (duplicate) {
+      return "Member ID already exists.";
+    }
+
+    return null;
+  };
+
+  const handleSave = async () => {
+    const validationError = validate(draftUniqueId);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    const normalizedValue = draftUniqueId.trim();
+
+    if (normalizedValue === member.uniqueId) {
+      onCancelEditing();
+      return;
+    }
+
+    await onSave(normalizedValue);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void handleSave();
+    }
+
+    if (event.key === "Escape") {
+      setDraftUniqueId(member.uniqueId ?? "");
+      setError(null);
+      onCancelEditing();
+    }
+  };
+
+  if (!canAccess) {
+    return <span className="font-medium">{displayValue}</span>;
+  }
+
+  if (isEditing) {
+    return (
+      <div className="w-36 space-y-1">
+        <Input
+          value={draftUniqueId}
+          onChange={(event) => {
+            setDraftUniqueId(event.target.value);
+            setError(null);
+          }}
+          onBlur={() => {
+            if (!isPending) {
+              void handleSave();
+            }
+          }}
+          onKeyDown={handleKeyDown}
+          aria-invalid={Boolean(error)}
+          disabled={isPending}
+          autoFocus
+          className="h-8"
+        />
+        {error ? <p className="text-destructive text-xs">{error}</p> : null}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="group inline-flex min-w-0 items-center gap-2 rounded-md px-2 py-1 -mx-2 font-medium hover:bg-muted"
+      onDoubleClick={() => {
+        setDraftUniqueId(member.uniqueId ?? "");
+        setError(null);
+        onStartEditing();
+      }}
+      disabled={isPending}
+      title="Double-click to edit member ID"
+    >
+      <span>{displayValue}</span>
+      {isPending ? (
+        <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
+      ) : (
+        <Edit className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       )}
     </button>
   );

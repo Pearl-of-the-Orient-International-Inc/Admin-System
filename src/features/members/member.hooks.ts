@@ -75,6 +75,39 @@ export const useUpdateMemberMutation = () => {
   });
 };
 
+export const useUpdateMemberUniqueIdMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: memberApi.updateMemberUniqueId,
+    onSuccess: async (updatedMember) => {
+      await queryClient.invalidateQueries({ queryKey: ["members"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["members", "detail", updatedMember.id],
+      });
+    },
+    meta: { feature: "members.unique-id.update" },
+  });
+};
+
+export const useChangeMemberPasswordByAdminMutation = () =>
+  useMutation({
+    mutationFn: memberApi.changeMemberPasswordByAdmin,
+    meta: { feature: "members.password.update" },
+  });
+
+export const useDeleteMemberMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: memberApi.deleteMember,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["members"] });
+    },
+    meta: { feature: "members.delete" },
+  });
+};
+
 export const useArchiveMemberMutation = () => {
   const queryClient = useQueryClient();
 
