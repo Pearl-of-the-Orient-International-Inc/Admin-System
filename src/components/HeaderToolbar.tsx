@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -33,7 +34,11 @@ import {
 import { IconBellBolt, IconSearch } from "@tabler/icons-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useCurrentUserQuery, useLogoutMutation, toApiError } from "@/features/auth/auth.hooks";
+import {
+  useCurrentUserQuery,
+  useLogoutMutation,
+  toApiError,
+} from "@/features/auth/auth.hooks";
 import { useToast } from "@/hooks/use-toast";
 import { adminSearchItems } from "@/lib/admin-search";
 import {
@@ -52,7 +57,8 @@ export const HeaderToolbar = () => {
   const router = useRouter();
   const { toast } = useToast();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { data: currentUser, isLoading: isCurrentUserLoading } = useCurrentUserQuery();
+  const { data: currentUser, isLoading: isCurrentUserLoading } =
+    useCurrentUserQuery();
   const logoutMutation = useLogoutMutation();
 
   const handleLogout = async () => {
@@ -61,7 +67,7 @@ export const HeaderToolbar = () => {
       toast({
         title: "Signed out",
         description: "Your session has been closed.",
-        variant: "info"
+        variant: "info",
       });
       router.replace("/");
     } catch (error: unknown) {
@@ -74,8 +80,7 @@ export const HeaderToolbar = () => {
     }
   };
 
-  const emailUsername =
-    currentUser?.email?.split("@")[0]?.trim() || "account";
+  const emailUsername = currentUser?.email?.split("@")[0]?.trim() || "account";
 
   const searchGroups = useMemo(() => {
     return adminSearchItems.reduce<Record<string, typeof adminSearchItems>>(
@@ -132,7 +137,10 @@ export const HeaderToolbar = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-55">
-            <DropdownMenuGroup className='space-y-1'>
+            <DropdownMenuLabel>
+              Role: {currentUser?.role} | {currentUser?.position}
+            </DropdownMenuLabel>
+            <DropdownMenuGroup className="space-y-1">
               <DropdownMenuItem onClick={() => router.push("/settings")}>
                 <SettingsIcon className="size-4" />
                 Settings
@@ -143,19 +151,19 @@ export const HeaderToolbar = () => {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup className='space-y-1'>
+            <DropdownMenuGroup className="space-y-1">
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <PaletteIcon />
                   Theme
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
-                  <DropdownMenuSubContent className='w-40' sideOffset={6}>
+                  <DropdownMenuSubContent className="w-40" sideOffset={6}>
                     <DropdownMenuGroup>
                       <DropdownMenuRadioGroup
                         value={theme}
                         onValueChange={setTheme}
-                        className='space-y-1'
+                        className="space-y-1"
                       >
                         <DropdownMenuRadioItem value="light">
                           <SunIcon />
@@ -176,12 +184,17 @@ export const HeaderToolbar = () => {
               </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup className='space-y-1'>
-              <DropdownMenuItem onClick={() => router.push(`/system-logs/${currentUser?.id}`)}>
+            <DropdownMenuGroup className="space-y-1">
+              <DropdownMenuItem
+                onClick={() => router.push(`/system-logs/${currentUser?.id}`)}
+              >
                 <ActivityIcon className="size-4" />
                 Activity
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
+              <DropdownMenuItem
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+              >
                 <LogOutIcon className="size-4" />
                 {logoutMutation.isPending ? "Signing out..." : "Sign out"}
               </DropdownMenuItem>
