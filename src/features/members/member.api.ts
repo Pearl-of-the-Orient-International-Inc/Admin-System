@@ -95,6 +95,13 @@ export async function changeMemberPasswordByAdmin({
   return data;
 }
 
+export async function verifyMemberEmail(memberId: string) {
+  const { data } = await api.patch<{ code: string; message: string }>(
+    `/members/${encodeURIComponent(memberId)}/verify-email`,
+  );
+  return data;
+}
+
 export async function deleteMember(memberId: string) {
   const { data } = await api.delete<{ code: string; message: string }>(
     `/members/${encodeURIComponent(memberId)}`,

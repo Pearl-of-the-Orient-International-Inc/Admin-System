@@ -14,6 +14,7 @@ export type MemberRecord = {
   memberTypeValue: MemberType;
   memberType: string;
   email: string;
+  isEmailVerified: boolean;
   mobile: string;
   civilStatus: string;
   branchOfServiceValues: string[];
@@ -71,6 +72,7 @@ export function mapMemberToRecord(member: AdminMember): MemberRecord {
     memberTypeValue: member.memberType,
     memberType: formatMemberType(member.memberType),
     email: member.user.email,
+    isEmailVerified: Boolean(member.user.isEmailVerified),
     mobile: member.mobilePhoneNumber?.trim() || "Not provided",
     gender: member.gender,
     civilStatus: formatCivilStatus(member.civilStatus),

@@ -99,6 +99,7 @@ import {
   useUpdateMemberUniqueIdMutation,
   useUpdateMemberMutation,
   useUpdateMemberStatusMutation,
+  useVerifyMemberEmailMutation,
 } from "@/features/members/member.hooks";
 import { useToast } from "@/hooks/use-toast";
 import { MemberStatus, MemberType } from "@/enums";
@@ -146,6 +147,7 @@ export function MembersPageContent() {
   const updateMemberUniqueIdMutation = useUpdateMemberUniqueIdMutation();
   const updateMemberStatusMutation = useUpdateMemberStatusMutation();
   const changeMemberPasswordMutation = useChangeMemberPasswordByAdminMutation();
+  const verifyMemberEmailMutation = useVerifyMemberEmailMutation();
   const deleteMemberMutation = useDeleteMemberMutation();
   const [isBatchQrPending, setIsBatchQrPending] = useState(false);
   const [updatingMemberTypeId, setUpdatingMemberTypeId] = useState<
@@ -158,6 +160,9 @@ export function MembersPageContent() {
     string | null
   >(null);
   const [changingMemberPasswordId, setChangingMemberPasswordId] = useState<
+    string | null
+  >(null);
+  const [verifyingMemberEmailId, setVerifyingMemberEmailId] = useState<
     string | null
   >(null);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
@@ -812,6 +817,38 @@ export function MembersPageContent() {
     }
   };
 
+  const handleVerifyMemberEmail = async (member: MemberRecord) => {
+    if (member.isEmailVerified) {
+      toast({
+        variant: "success",
+        title: "Email already verified",
+        description: `${member.email} is already marked as verified.`,
+      });
+      return;
+    }
+
+    try {
+      setVerifyingMemberEmailId(member.memberId);
+      await verifyMemberEmailMutation.mutateAsync(member.memberId);
+      toast({
+        variant: "success",
+        title: "Email verified",
+        description: `${member.email} is now marked as verified.`,
+      });
+    } catch (error) {
+      const apiError = toApiError(error);
+      toast({
+        variant: "error",
+        title: "Email verification failed",
+        description:
+          apiError.message ?? "Unable to verify the member email right now.",
+      });
+      throw new Error(apiError.message ?? "Unable to verify member email.");
+    } finally {
+      setVerifyingMemberEmailId(null);
+    }
+  };
+
   const handleDeleteMember = async (member: MemberRecord) => {
     try {
       setDeletingMemberId(member.memberId);
@@ -853,8 +890,10 @@ export function MembersPageContent() {
     ? "Preparing QR code downloads..."
     : archiveMemberMutation.isPending
       ? "Archiving member records..."
-      : retrieveMemberMutation.isPending
-        ? "Retrieving member records..."
+        : retrieveMemberMutation.isPending
+          ? "Retrieving member records..."
+          : verifyMemberEmailMutation.isPending
+            ? "Verifying member email..."
         : deleteMemberMutation.isPending
           ? "Deleting member record..."
         : "";
@@ -1036,6 +1075,7 @@ export function MembersPageContent() {
                         updatingMemberUniqueIdId={updatingMemberUniqueIdId}
                         updatingMemberStatusId={updatingMemberStatusId}
                         changingMemberPasswordId={changingMemberPasswordId}
+                        verifyingMemberEmailId={verifyingMemberEmailId}
                         deletingMemberId={deletingMemberId}
                         isBatchQrPending={isBatchQrPending}
                         isBulkActionPending={isArchiveActionPending}
@@ -1051,6 +1091,7 @@ export function MembersPageContent() {
                         onUpdateMemberType={handleUpdateMemberType}
                         onUpdateMemberStatus={handleUpdateMemberStatus}
                         onChangeMemberPassword={handleChangeMemberPassword}
+                        onVerifyMemberEmail={handleVerifyMemberEmail}
                         onDeleteMember={handleDeleteMember}
                       />
                     )}

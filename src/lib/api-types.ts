@@ -298,7 +298,10 @@ export interface AdminMember {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  user: Pick<UserPublic, "id" | "name" | "email" | "avatar" | "role">;
+  user: Pick<
+    UserPublic,
+    "id" | "name" | "email" | "avatar" | "role" | "isEmailVerified"
+  >;
 }
 
 export interface MembersPagination {

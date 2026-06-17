@@ -17,6 +17,7 @@ import {
   Edit,
   ChevronsUpDown,
   LockKeyhole,
+  MailCheck,
   Trash2,
 } from "lucide-react";
 
@@ -78,6 +79,7 @@ type MembersDataTableProps = {
   updatingMemberStatusId?: string | null;
   updatingMemberUniqueIdId?: string | null;
   changingMemberPasswordId?: string | null;
+  verifyingMemberEmailId?: string | null;
   deletingMemberId?: string | null;
   onBatchDownloadQrCodes: (members: MemberRecord[]) => void;
   onRequestBulkAction: (memberIds: string[]) => void;
@@ -103,6 +105,7 @@ type MembersDataTableProps = {
     password: string,
     confirmPassword: string,
   ) => Promise<void>;
+  onVerifyMemberEmail?: (member: MemberRecord) => Promise<void>;
   onDeleteMember?: (member: MemberRecord) => Promise<void>;
 };
 
@@ -118,6 +121,7 @@ export function MembersDataTable({
   updatingMemberStatusId = null,
   updatingMemberUniqueIdId = null,
   changingMemberPasswordId = null,
+  verifyingMemberEmailId = null,
   deletingMemberId = null,
   onBatchDownloadQrCodes,
   onRequestBulkAction,
@@ -130,6 +134,7 @@ export function MembersDataTable({
   onUpdateMemberType,
   onUpdateMemberStatus,
   onChangeMemberPassword,
+  onVerifyMemberEmail,
   onDeleteMember,
 }: MembersDataTableProps) {
   const { data: currentUser, isLoading: isCurrentUserLoading } =
@@ -158,6 +163,7 @@ export function MembersDataTable({
     currentUser?.role === "ADMIN";
   const canEditMemberUniqueId = canAccess && Boolean(onUpdateMemberUniqueId);
   const canChangeMemberPassword = canAccess && Boolean(onChangeMemberPassword);
+  const canVerifyMemberEmail = canAccess && Boolean(onVerifyMemberEmail);
   const canDeleteMember = canAccess && Boolean(onDeleteMember);
 
   const columns = useMemo<ColumnDef<MemberRecord>[]>(
@@ -245,6 +251,16 @@ export function MembersDataTable({
             }}
           />
         ),
+      },
+      {
+        accessorKey: "isEmailVerified",
+        header: "Email Status",
+        cell: ({ row }) =>
+          row.original.isEmailVerified ? (
+            <Badge variant="success">Verified</Badge>
+          ) : (
+            <Badge variant="warning">Not verified</Badge>
+          ),
       },
       {
         accessorKey: "status",
@@ -430,6 +446,29 @@ export function MembersDataTable({
               >
                 <LockKeyhole className="size-4" />
                 Change password
+              </DropdownMenuItem>
+            )}
+            {canVerifyMemberEmail && (
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!onVerifyMemberEmail) return;
+                  void onVerifyMemberEmail(row.original);
+                }}
+                disabled={
+                  row.original.isEmailVerified ||
+                  verifyingMemberEmailId === row.original.memberId
+                }
+              >
+                {verifyingMemberEmailId === row.original.memberId ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <MailCheck className="size-4" />
+                )}
+                {row.original.isEmailVerified
+                  ? "Email verified"
+                  : verifyingMemberEmailId === row.original.memberId
+                    ? "Verifying..."
+                    : "Verify email"}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => onViewDetails(row.original)}>

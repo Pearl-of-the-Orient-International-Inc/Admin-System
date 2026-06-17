@@ -96,6 +96,18 @@ export const useChangeMemberPasswordByAdminMutation = () =>
     meta: { feature: "members.password.update" },
   });
 
+export const useVerifyMemberEmailMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: memberApi.verifyMemberEmail,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["members"] });
+    },
+    meta: { feature: "members.email.verify" },
+  });
+};
+
 export const useDeleteMemberMutation = () => {
   const queryClient = useQueryClient();
 
