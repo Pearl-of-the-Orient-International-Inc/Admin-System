@@ -15,6 +15,8 @@ import {
   Archive,
   Edit,
   ChevronsUpDown,
+  LockKeyhole,
+  Trash2,
 } from "lucide-react";
 
 import { GlobalDataTable } from "@/components/DataTable";
@@ -37,17 +39,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  memberTypeFilterOptions,
-  type MemberRecord,
-} from "./members-data";
+import { memberTypeFilterOptions, type MemberRecord } from "./members-data";
 import Image from "next/image";
+import { useCurrentUserQuery } from "@/features/auth/auth.hooks";
 
 type MembersDataTableProps = {
   data: MemberRecord[];
   bulkActionLabel: "Archive" | "Retrieve";
   sorting: SortingState;
-  onSortingChange: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
+  onSortingChange: (
+    updater: SortingState | ((old: SortingState) => SortingState),
+  ) => void;
   isBatchQrPending?: boolean;
   isBulkActionPending?: boolean;
   isRowArchiveActionPending?: boolean;
@@ -90,12 +92,15 @@ export function MembersDataTable({
   onUpdateMemberType,
   onUpdateMemberStatus,
 }: MembersDataTableProps) {
+  const { data: currentUser, isLoading: isCurrentUserLoading } =
+    useCurrentUserQuery();
+
   const [editingMemberTypeId, setEditingMemberTypeId] = useState<string | null>(
     null,
   );
-  const [editingMemberStatusId, setEditingMemberStatusId] = useState<string | null>(
-    null,
-  );
+  const [editingMemberStatusId, setEditingMemberStatusId] = useState<
+    string | null
+  >(null);
 
   const columns = useMemo<ColumnDef<MemberRecord>[]>(
     () => [
@@ -173,7 +178,9 @@ export function MembersDataTable({
               member={row.original}
               isEditing={editingMemberStatusId === row.original.memberId}
               isPending={updatingMemberStatusId === row.original.memberId}
-              onStartEditing={() => setEditingMemberStatusId(row.original.memberId)}
+              onStartEditing={() =>
+                setEditingMemberStatusId(row.original.memberId)
+              }
               onCancelEditing={() => setEditingMemberStatusId(null)}
               onSave={async (status) => {
                 await onUpdateMemberStatus(row.original, status);
@@ -223,6 +230,11 @@ export function MembersDataTable({
       </div>
     );
   }
+
+  const canAccess =
+    !isCurrentUserLoading &&
+    currentUser?.position === "IT" &&
+    currentUser?.role === "ADMIN";
 
   return (
     <GlobalDataTable
@@ -292,6 +304,12 @@ export function MembersDataTable({
               <Edit className="size-4" />
               Edit
             </DropdownMenuItem>
+            {canAccess && (
+              <DropdownMenuItem>
+                <LockKeyhole className="size-4" />
+                Change password
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => onViewDetails(row.original)}>
               <Eye className="size-4" />
               View details
@@ -330,6 +348,14 @@ export function MembersDataTable({
                   ? "Retrieve member"
                   : "Suspend member"}
             </DropdownMenuItem>
+            {canAccess && (
+              <DropdownMenuItem
+                variant="destructive"
+              >
+                <Trash2 className="size-4" />
+                Delete member
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )}
