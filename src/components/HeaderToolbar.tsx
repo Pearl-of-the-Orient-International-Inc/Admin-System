@@ -51,6 +51,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const HeaderToolbar = () => {
   const { theme, setTheme } = useTheme();
@@ -138,7 +139,18 @@ export const HeaderToolbar = () => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-55">
             <DropdownMenuLabel>
-              Role: {currentUser?.role} | {currentUser?.position}
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <AvatarImage src={currentUser?.avatar || ""} />
+                  <AvatarFallback>{currentUser?.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold">{currentUser?.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Designation: {currentUser?.role} ({currentUser?.position})
+                  </p>
+                </div>
+              </div>
             </DropdownMenuLabel>
             <DropdownMenuGroup className="space-y-1">
               <DropdownMenuItem onClick={() => router.push("/settings")}>
