@@ -146,7 +146,7 @@ export const HeaderToolbar = () => {
                 </Avatar>
                 <div>
                   <p className="font-semibold">{currentUser?.name}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Designation: {currentUser?.role} ({currentUser?.position})
                   </p>
                 </div>
