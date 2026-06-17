@@ -137,7 +137,7 @@ export const HeaderToolbar = () => {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-55">
+          <DropdownMenuContent align="start" className="w-65">
             <DropdownMenuLabel>
               <div className="flex items-center gap-3">
                 <Avatar>
