@@ -15,6 +15,7 @@ import {
   IconPray,
   IconUserCog,
   IconUsersGroup,
+  IconWallet,
 } from "@tabler/icons-react";
 import {
   Sidebar,
@@ -90,6 +91,29 @@ const data = {
       title: "Events",
       url: "/events",
       icon: IconCalendarEvent,
+    },
+    {
+      title: "Accounting",
+      url: "#",
+      icon: IconWallet,
+      subItems: [
+        {
+          title: "Accounts Payable",
+          url: "/accounting/accounts-payable",
+        },
+        {
+          title: "Accounts Receivable",
+          url: "/accounting/accounts-receivable",
+        },
+        {
+          title: "Cashflow & Ledger",
+          url: "/accounting/cashflow-ledger",
+        },
+        {
+          title: "Invoices",
+          url: "/accounting/invoices",
+        },
+      ],
     },
     {
       title: "Prayer Requests",

@@ -1022,7 +1022,6 @@ function EventFormEditor({
             </Button>
             <Button
               type="submit"
-              disabled={isInvalid || isSubmitting || isUploadingThumbnail}
               className="h-10"
             >
               {isSubmitting ? (

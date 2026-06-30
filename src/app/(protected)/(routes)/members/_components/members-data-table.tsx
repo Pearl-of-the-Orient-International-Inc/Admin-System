@@ -20,6 +20,7 @@ import {
   MailCheck,
   Trash2,
 } from "lucide-react";
+import { format } from "date-fns";
 
 import { GlobalDataTable } from "@/components/DataTable";
 import { MemberType } from "@/enums";
@@ -59,8 +60,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { memberTypeFilterOptions, type MemberRecord } from "./members-data";
 import Image from "next/image";
 import { useCurrentUserQuery } from "@/features/auth/auth.hooks";
@@ -78,6 +85,7 @@ type MembersDataTableProps = {
   updatingMemberTypeId?: string | null;
   updatingMemberStatusId?: string | null;
   updatingMemberUniqueIdId?: string | null;
+  updatingMemberApplicationDateId?: string | null;
   changingMemberPasswordId?: string | null;
   verifyingMemberEmailId?: string | null;
   deletingMemberId?: string | null;
@@ -100,6 +108,10 @@ type MembersDataTableProps = {
     member: MemberRecord,
     status: EditableMemberStatus,
   ) => Promise<void>;
+  onUpdateMemberApplicationDate?: (
+    member: MemberRecord,
+    applicationDate: Date,
+  ) => Promise<void>;
   onChangeMemberPassword?: (
     member: MemberRecord,
     password: string,
@@ -120,6 +132,7 @@ export function MembersDataTable({
   updatingMemberTypeId = null,
   updatingMemberStatusId = null,
   updatingMemberUniqueIdId = null,
+  updatingMemberApplicationDateId = null,
   changingMemberPasswordId = null,
   verifyingMemberEmailId = null,
   deletingMemberId = null,
@@ -133,6 +146,7 @@ export function MembersDataTable({
   onUpdateMemberUniqueId,
   onUpdateMemberType,
   onUpdateMemberStatus,
+  onUpdateMemberApplicationDate,
   onChangeMemberPassword,
   onVerifyMemberEmail,
   onDeleteMember,
@@ -162,6 +176,7 @@ export function MembersDataTable({
     currentUser?.position === "IT" &&
     currentUser?.role === "ADMIN";
   const canEditMemberUniqueId = canAccess && Boolean(onUpdateMemberUniqueId);
+  const canEditMemberApplicationDate = Boolean(onUpdateMemberApplicationDate);
   const canChangeMemberPassword = canAccess && Boolean(onChangeMemberPassword);
   const canVerifyMemberEmail = canAccess && Boolean(onVerifyMemberEmail);
   const canDeleteMember = canAccess && Boolean(onDeleteMember);
@@ -286,24 +301,37 @@ export function MembersDataTable({
       {
         accessorKey: "appliedAt",
         header: "Application Date",
-        cell: ({ row }) =>
-          new Date(row.original.appliedAt).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
+        cell: ({ row }) => (
+          <EditableApplicationDateCell
+            member={row.original}
+            canAccess={canEditMemberApplicationDate}
+            isPending={
+              updatingMemberApplicationDateId === row.original.memberId
+            }
+            onSave={async (applicationDate) => {
+              if (!onUpdateMemberApplicationDate) return;
+              await onUpdateMemberApplicationDate(
+                row.original,
+                applicationDate,
+              );
+            }}
+          />
+        ),
       },
     ],
     [
       canAccess,
+      canEditMemberApplicationDate,
       canEditMemberUniqueId,
       data,
       editingMemberUniqueIdId,
       editingMemberStatusId,
       editingMemberTypeId,
       onUpdateMemberUniqueId,
+      onUpdateMemberApplicationDate,
       onUpdateMemberStatus,
       onUpdateMemberType,
+      updatingMemberApplicationDateId,
       updatingMemberUniqueIdId,
       updatingMemberStatusId,
       updatingMemberTypeId,
@@ -652,6 +680,64 @@ export function MembersDataTable({
 }
 
 type EditableMemberStatus = "Approved" | "Pending" | "Rejected" | "Archived";
+
+function EditableApplicationDateCell({
+  member,
+  canAccess,
+  isPending,
+  onSave,
+}: {
+  member: MemberRecord;
+  canAccess: boolean;
+  isPending: boolean;
+  onSave: (applicationDate: Date) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const appliedAt = new Date(member.appliedAt);
+  const selectedDate = Number.isNaN(appliedAt.getTime())
+    ? undefined
+    : appliedAt;
+  const displayValue = selectedDate
+    ? format(selectedDate, "MMM d, yyyy")
+    : "Not set";
+
+  if (!canAccess) {
+    return <span>{displayValue}</span>;
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="group inline-flex min-w-0 items-center gap-2 rounded-md px-2 py-1 -mx-2 hover:bg-muted"
+          onDoubleClick={() => setOpen(true)}
+          disabled={isPending}
+          title="Double-click to edit application date"
+        >
+          <span>{displayValue}</span>
+          {isPending ? (
+            <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
+          ) : (
+            <Edit className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          defaultMonth={selectedDate}
+          disabled={isPending}
+          onSelect={(date) => {
+            if (!date) return;
+            void onSave(date).then(() => setOpen(false));
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function EditableMemberTypeCell({
   member,

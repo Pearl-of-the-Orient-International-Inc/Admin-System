@@ -156,6 +156,10 @@ export function MembersPageContent() {
   const [updatingMemberUniqueIdId, setUpdatingMemberUniqueIdId] = useState<
     string | null
   >(null);
+  const [
+    updatingMemberApplicationDateId,
+    setUpdatingMemberApplicationDateId,
+  ] = useState<string | null>(null);
   const [updatingMemberStatusId, setUpdatingMemberStatusId] = useState<
     string | null
   >(null);
@@ -775,6 +779,73 @@ export function MembersPageContent() {
     }
   };
 
+  const handleUpdateMemberApplicationDate = async (
+    member: MemberRecord,
+    applicationDate: Date,
+  ) => {
+    const sourceMember = data?.data.find((item) => item.id === member.memberId);
+
+    if (!sourceMember) {
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "The selected member record could not be found.",
+      });
+      return;
+    }
+
+    const sourceCreatedAt = new Date(sourceMember.createdAt);
+    const nextCreatedAt = new Date(sourceMember.createdAt);
+    const hasValidSourceCreatedAt = !Number.isNaN(sourceCreatedAt.getTime());
+
+    if (!hasValidSourceCreatedAt) {
+      nextCreatedAt.setTime(applicationDate.getTime());
+    } else {
+      nextCreatedAt.setFullYear(applicationDate.getFullYear());
+      nextCreatedAt.setMonth(applicationDate.getMonth());
+      nextCreatedAt.setDate(applicationDate.getDate());
+    }
+
+    const currentDateKey = hasValidSourceCreatedAt
+      ? format(sourceCreatedAt, "yyyy-MM-dd")
+      : "";
+    const nextDateKey = format(nextCreatedAt, "yyyy-MM-dd");
+
+    if (currentDateKey === nextDateKey) {
+      return;
+    }
+
+    try {
+      setUpdatingMemberApplicationDateId(member.memberId);
+      await updateMemberMutation.mutateAsync({
+        memberId: member.memberId,
+        payload: {
+          ...mapAdminMemberToUpdatePayload(sourceMember),
+          createdAt: nextCreatedAt.toISOString(),
+        },
+      });
+      toast({
+        variant: "success",
+        title: "Application date updated",
+        description: `${member.fullName}'s application date is now ${format(
+          nextCreatedAt,
+          "MMM d, yyyy",
+        )}.`,
+      });
+    } catch (error) {
+      const apiError = toApiError(error);
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description:
+          apiError.message ?? "Unable to update the application date right now.",
+      });
+      throw new Error(apiError.message ?? "Unable to update application date.");
+    } finally {
+      setUpdatingMemberApplicationDateId(null);
+    }
+  };
+
   const handleRequestBulkMemberAction = (memberIds: string[]) => {
     const selectedMembers = members.filter((member) =>
       memberIds.includes(member.memberId),
@@ -1073,6 +1144,9 @@ export function MembersPageContent() {
                         onSortingChange={setTableSorting}
                         updatingMemberTypeId={updatingMemberTypeId}
                         updatingMemberUniqueIdId={updatingMemberUniqueIdId}
+                        updatingMemberApplicationDateId={
+                          updatingMemberApplicationDateId
+                        }
                         updatingMemberStatusId={updatingMemberStatusId}
                         changingMemberPasswordId={changingMemberPasswordId}
                         verifyingMemberEmailId={verifyingMemberEmailId}
@@ -1090,6 +1164,9 @@ export function MembersPageContent() {
                         onUpdateMemberUniqueId={handleUpdateMemberUniqueId}
                         onUpdateMemberType={handleUpdateMemberType}
                         onUpdateMemberStatus={handleUpdateMemberStatus}
+                        onUpdateMemberApplicationDate={
+                          handleUpdateMemberApplicationDate
+                        }
                         onChangeMemberPassword={handleChangeMemberPassword}
                         onVerifyMemberEmail={handleVerifyMemberEmail}
                         onDeleteMember={handleDeleteMember}
