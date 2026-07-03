@@ -102,6 +102,13 @@ export async function verifyMemberEmail(memberId: string) {
   return data;
 }
 
+export async function sendRenewalEmail(memberId: string) {
+  const { data } = await api.post<{ code: string; message: string }>(
+    `/members/${encodeURIComponent(memberId)}/renewal-email`,
+  );
+  return data;
+}
+
 export async function deleteMember(memberId: string) {
   const { data } = await api.delete<{ code: string; message: string }>(
     `/members/${encodeURIComponent(memberId)}`,

@@ -45,6 +45,7 @@ import {
   useArchiveMemberMutation,
   useMembersQuery,
   useRetrieveMemberMutation,
+  useSendRenewalEmailMutation,
   useUpdateMemberMutation,
   useUpdateMemberStatusMutation,
 } from "@/features/members/member.hooks";
@@ -94,15 +95,19 @@ export function RenewalMembersPageContent() {
   const [updatingMemberStatusId, setUpdatingMemberStatusId] = useState<
     string | null
   >(null);
+  const [sendingRenewalEmailId, setSendingRenewalEmailId] = useState<
+    string | null
+  >(null);
 
   const { data, isLoading, isError, error } = useMembersQuery({
-    limit: 100,
+    all: true,
     includeArchived: true,
   });
   const archiveMemberMutation = useArchiveMemberMutation();
   const retrieveMemberMutation = useRetrieveMemberMutation();
   const updateMemberMutation = useUpdateMemberMutation();
   const updateMemberStatusMutation = useUpdateMemberStatusMutation();
+  const sendRenewalEmailMutation = useSendRenewalEmailMutation();
 
   const renewalThreshold = useMemo(() => subYears(new Date(), 1), []);
 
@@ -111,7 +116,6 @@ export function RenewalMembersPageContent() {
       (data?.data ?? [])
         .filter(
           (member) =>
-            member.isActive &&
             member.status === "APPROVED" &&
             !Number.isNaN(new Date(member.createdAt).getTime()) &&
             new Date(member.createdAt) <= renewalThreshold,
@@ -202,6 +206,27 @@ export function RenewalMembersPageContent() {
 
   const handleGenerateQrCode = (member: MemberRecord) => {
     setQrDialogMember(member);
+  };
+
+  const handleSendRenewalEmail = async (member: MemberRecord) => {
+    try {
+      setSendingRenewalEmailId(member.memberId);
+      await sendRenewalEmailMutation.mutateAsync(member.memberId);
+
+      toast({
+        variant: "success",
+        title: "Renewal email sent",
+        description: `${member.fullName} has been notified by email.`,
+      });
+    } catch {
+      toast({
+        variant: "error",
+        title: "Email not sent",
+        description: "Unable to send the renewal email right now.",
+      });
+    } finally {
+      setSendingRenewalEmailId(null);
+    }
   };
 
   const handleSuspendMember = (member: MemberRecord) => {
@@ -537,7 +562,7 @@ export function RenewalMembersPageContent() {
             {!renewalMembers.length ? (
               <PageEmptyState
                 title="No renewal members yet"
-                description="There are no active approved members whose application date has reached one year yet."
+                description="There are no approved members whose application date has reached one year yet."
                 createUrl="/members"
                 createLabel="Back to members"
               />
@@ -550,6 +575,7 @@ export function RenewalMembersPageContent() {
                   onSortingChange={setTableSorting}
                   updatingMemberTypeId={updatingMemberTypeId}
                   updatingMemberStatusId={updatingMemberStatusId}
+                  sendingRenewalEmailId={sendingRenewalEmailId}
                   isBatchQrPending={isBatchQrPending}
                   isBulkActionPending={isArchiveActionPending}
                   isRowArchiveActionPending={isArchiveActionPending}
@@ -566,6 +592,7 @@ export function RenewalMembersPageContent() {
                   onAssignOffice={handleAssignOffice}
                   onRequestToggleMemberArchiveState={handleSuspendMember}
                   onGenerateQrCode={handleGenerateQrCode}
+                  onSendRenewalEmail={handleSendRenewalEmail}
                   onUpdateMemberType={handleUpdateMemberType}
                   onUpdateMemberStatus={handleUpdateMemberStatus}
                 />

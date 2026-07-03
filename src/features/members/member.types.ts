@@ -58,6 +58,7 @@ export type CreateMemberByAdminRequest = {
 export type MembersQueryParams = {
   page?: number;
   limit?: number;
+  all?: boolean;
   search?: string;
   status?: MemberStatus;
   includeArchived?: boolean;

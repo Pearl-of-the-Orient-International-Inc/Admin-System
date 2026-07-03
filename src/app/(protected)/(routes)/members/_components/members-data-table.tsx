@@ -17,6 +17,7 @@ import {
   Edit,
   ChevronsUpDown,
   LockKeyhole,
+  Mail,
   MailCheck,
   Trash2,
 } from "lucide-react";
@@ -88,6 +89,7 @@ type MembersDataTableProps = {
   updatingMemberApplicationDateId?: string | null;
   changingMemberPasswordId?: string | null;
   verifyingMemberEmailId?: string | null;
+  sendingRenewalEmailId?: string | null;
   deletingMemberId?: string | null;
   onBatchDownloadQrCodes: (members: MemberRecord[]) => void;
   onRequestBulkAction: (memberIds: string[]) => void;
@@ -118,6 +120,7 @@ type MembersDataTableProps = {
     confirmPassword: string,
   ) => Promise<void>;
   onVerifyMemberEmail?: (member: MemberRecord) => Promise<void>;
+  onSendRenewalEmail?: (member: MemberRecord) => Promise<void>;
   onDeleteMember?: (member: MemberRecord) => Promise<void>;
 };
 
@@ -135,6 +138,7 @@ export function MembersDataTable({
   updatingMemberApplicationDateId = null,
   changingMemberPasswordId = null,
   verifyingMemberEmailId = null,
+  sendingRenewalEmailId = null,
   deletingMemberId = null,
   onBatchDownloadQrCodes,
   onRequestBulkAction,
@@ -149,6 +153,7 @@ export function MembersDataTable({
   onUpdateMemberApplicationDate,
   onChangeMemberPassword,
   onVerifyMemberEmail,
+  onSendRenewalEmail,
   onDeleteMember,
 }: MembersDataTableProps) {
   const { data: currentUser, isLoading: isCurrentUserLoading } =
@@ -179,6 +184,7 @@ export function MembersDataTable({
   const canEditMemberApplicationDate = Boolean(onUpdateMemberApplicationDate);
   const canChangeMemberPassword = canAccess && Boolean(onChangeMemberPassword);
   const canVerifyMemberEmail = canAccess && Boolean(onVerifyMemberEmail);
+  const canSendRenewalEmail = Boolean(onSendRenewalEmail);
   const canDeleteMember = canAccess && Boolean(onDeleteMember);
 
   const columns = useMemo<ColumnDef<MemberRecord>[]>(
@@ -514,6 +520,24 @@ export function MembersDataTable({
               <QrCode className="size-4" />
               Generate QR code
             </DropdownMenuItem>
+            {canSendRenewalEmail ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!onSendRenewalEmail) return;
+                  void onSendRenewalEmail(row.original);
+                }}
+                disabled={sendingRenewalEmailId === row.original.memberId}
+              >
+                {sendingRenewalEmailId === row.original.memberId ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <Mail className="size-4" />
+                )}
+                {sendingRenewalEmailId === row.original.memberId
+                  ? "Sending renewal..."
+                  : "Send renewal email"}
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => onRequestToggleMemberArchiveState(row.original)}

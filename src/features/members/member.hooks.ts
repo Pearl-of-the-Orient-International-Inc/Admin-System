@@ -108,6 +108,12 @@ export const useVerifyMemberEmailMutation = () => {
   });
 };
 
+export const useSendRenewalEmailMutation = () =>
+  useMutation({
+    mutationFn: memberApi.sendRenewalEmail,
+    meta: { feature: "members.renewal.email" },
+  });
+
 export const useDeleteMemberMutation = () => {
   const queryClient = useQueryClient();
 
