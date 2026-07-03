@@ -138,7 +138,7 @@ export function MembersPageContent() {
   const [tableSorting, setTableSorting] = useState<SortingState>([]);
   const { toast } = useToast();
   const { data, isLoading, isError, error } = useMembersQuery({
-    limit: 100,
+    limit: 5000,
     includeArchived: true,
   });
   const archiveMemberMutation = useArchiveMemberMutation();
