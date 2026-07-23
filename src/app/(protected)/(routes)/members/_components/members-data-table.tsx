@@ -5,6 +5,7 @@ import type { FormEvent, KeyboardEvent } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import {
   ArrowDownUp,
+  Barcode,
   BriefcaseBusiness,
   Download,
   Eye,
@@ -97,6 +98,7 @@ type MembersDataTableProps = {
   onEditDetails: (member: MemberRecord) => void;
   onAssignOffice: (member: MemberRecord) => void;
   onRequestToggleMemberArchiveState: (member: MemberRecord) => void;
+  onGenerateBarcode?: (member: MemberRecord) => void;
   onGenerateQrCode: (member: MemberRecord) => void;
   onUpdateMemberUniqueId?: (
     member: MemberRecord,
@@ -146,6 +148,7 @@ export function MembersDataTable({
   onEditDetails,
   onAssignOffice,
   onRequestToggleMemberArchiveState,
+  onGenerateBarcode,
   onGenerateQrCode,
   onUpdateMemberUniqueId,
   onUpdateMemberType,
@@ -463,7 +466,7 @@ export function MembersDataTable({
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => onEditDetails(row.original)}>
               <Edit className="size-4" />
@@ -516,6 +519,12 @@ export function MembersDataTable({
               <BriefcaseBusiness className="size-4" />
               Manage offices
             </DropdownMenuItem>
+            {onGenerateBarcode ? (
+              <DropdownMenuItem onClick={() => onGenerateBarcode(row.original)}>
+                <Barcode className="size-4" />
+                Generate barcode
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem onClick={() => onGenerateQrCode(row.original)}>
               <QrCode className="size-4" />
               Generate QR code

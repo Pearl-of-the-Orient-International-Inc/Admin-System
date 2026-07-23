@@ -74,7 +74,23 @@ api.interceptors.response.use(
 
 export function toApiError(error: unknown): ApiErrorResponse {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
-    return error.response?.data ?? { code: "UNKNOWN_ERROR", message: error.message };
+    const data = error.response?.data;
+    if (!data) {
+      return { code: "UNKNOWN_ERROR", message: error.message };
+    }
+
+    const issueMessage = data.errors?.map((issue) => issue.message).join(", ");
+    const rawErrorMessage = typeof data.error === "string" ? data.error : undefined;
+
+    return {
+      ...data,
+      message:
+        data.message ||
+        issueMessage ||
+        rawErrorMessage ||
+        error.message ||
+        "Request failed",
+    };
   }
   return { code: "UNKNOWN_ERROR", message: "Unexpected error" };
 }

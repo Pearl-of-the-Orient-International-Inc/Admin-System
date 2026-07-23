@@ -12,6 +12,8 @@ import type {
   UpdateMemberByAdminRequest,
   UpdateMemberUniqueIdRequest,
   ChangeMemberPasswordByAdminRequest,
+  GenerateMemberCredentialDocumentRequest,
+  MemberCredentialDocumentResponse,
   UpdateMemberStatusRequest,
 } from "./member.types";
 
@@ -107,6 +109,17 @@ export async function sendRenewalEmail(memberId: string) {
     `/members/${encodeURIComponent(memberId)}/renewal-email`,
   );
   return data;
+}
+
+export async function generateMemberCredentialDocument({
+  memberId,
+  type,
+}: GenerateMemberCredentialDocumentRequest) {
+  const { data } = await api.post<MemberCredentialDocumentResponse>(
+    `/members/${encodeURIComponent(memberId)}/credential-documents`,
+    { type },
+  );
+  return data.data;
 }
 
 export async function deleteMember(memberId: string) {

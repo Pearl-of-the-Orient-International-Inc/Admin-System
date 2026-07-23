@@ -114,6 +114,12 @@ export const useSendRenewalEmailMutation = () =>
     meta: { feature: "members.renewal.email" },
   });
 
+export const useGenerateMemberCredentialDocumentMutation = () =>
+  useMutation({
+    mutationFn: memberApi.generateMemberCredentialDocument,
+    meta: { feature: "members.credential-document.generate" },
+  });
+
 export const useDeleteMemberMutation = () => {
   const queryClient = useQueryClient();
 

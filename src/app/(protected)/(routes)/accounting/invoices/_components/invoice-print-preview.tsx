@@ -20,8 +20,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { Invoice } from "@/features/invoices/invoices.types";
 
-import { invoices, printInvoiceItems, type Invoice } from "./invoices-data";
+const currency = new Intl.NumberFormat("en-PH", {
+  currency: "PHP",
+  style: "currency",
+});
+const amountOf = (value: string | number | null | undefined) =>
+  Number(value ?? 0);
+const formatDate = (value?: string) =>
+  value
+    ? new Intl.DateTimeFormat("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(new Date(value))
+    : "-";
 
 function SettingsSelect({
   label,
@@ -86,7 +100,11 @@ function PrintSettings() {
         </div>
       </div>
 
-      <SettingsSelect label="Margins" value="normal" options={["Normal", "Narrow", "Wide"]} />
+      <SettingsSelect
+        label="Margins"
+        value="normal"
+        options={["Normal", "Narrow", "Wide"]}
+      />
 
       <div className="space-y-3">
         <p className="text-xs font-medium">Show Options</p>
@@ -128,11 +146,17 @@ function PrintSettings() {
           <Printer className="size-4" />
           Print Now
         </Button>
-        <Button variant="outline" className="w-full border-emerald-700 text-emerald-700 hover:text-emerald-800">
+        <Button
+          variant="outline"
+          className="w-full border-emerald-700 text-emerald-700 hover:text-emerald-800"
+        >
           <Download className="size-4" />
           Download as PDF
         </Button>
-        <Button variant="outline" className="w-full border-emerald-700 text-emerald-700 hover:text-emerald-800">
+        <Button
+          variant="outline"
+          className="w-full border-emerald-700 text-emerald-700 hover:text-emerald-800"
+        >
           <Mail className="size-4" />
           Email Invoice
         </Button>
@@ -141,7 +165,15 @@ function PrintSettings() {
   );
 }
 
-function InvoiceDocument({ invoice = invoices[0] }: { invoice?: Invoice }) {
+function InvoiceDocument({ invoice }: { invoice?: Invoice }) {
+  const subtotal =
+    invoice?.items.reduce((total, item) => total + amountOf(item.amount), 0) ??
+    0;
+  const discount = amountOf(invoice?.discount);
+  const tax = amountOf(invoice?.tax);
+  const total = amountOf(invoice?.totalAmount);
+  const customer = invoice?.customer ?? "-";
+
   return (
     <article className="mx-auto min-h-280.75 w-full max-w-198.5 bg-white p-10 text-[12px] text-slate-900 shadow-sm">
       <header className="flex items-start justify-between border-b border-green-800 pb-6">
@@ -174,15 +206,15 @@ function InvoiceDocument({ invoice = invoices[0] }: { invoice?: Invoice }) {
         <div className="text-right">
           <h2 className="text-3xl font-extrabold tracking-tight">INVOICE</h2>
           <p className="mt-1 text-base font-bold text-emerald-800">
-            {invoice.invoiceNo}
+            {invoice?.invoiceNo ?? "-"}
           </p>
           <dl className="mt-6 grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-left">
             <dt className="font-semibold">Invoice Date:</dt>
-            <dd>{invoice.invoiceDate}</dd>
+            <dd>{formatDate(invoice?.invoiceDate)}</dd>
             <dt className="font-semibold">Due Date:</dt>
-            <dd>{invoice.dueDate}</dd>
+            <dd>{formatDate(invoice?.dueDate)}</dd>
             <dt className="font-semibold">Reference:</dt>
-            <dd>-</dd>
+            <dd>{invoice?.reference ?? "-"}</dd>
           </dl>
         </div>
       </header>
@@ -190,24 +222,16 @@ function InvoiceDocument({ invoice = invoices[0] }: { invoice?: Invoice }) {
       <section className="grid grid-cols-2 gap-16 py-7">
         <div>
           <h4 className="mb-3 font-bold text-emerald-800">BILL TO</h4>
-          <p className="font-bold">{invoice.customer}</p>
+          <p className="font-bold">{customer}</p>
           <p className="mt-1 leading-relaxed text-slate-600">
-            Poblacion, San Pablo City
-            <br />
-            Laguna, Philippines 4000
-            <br />
-            Email: stpeterparish@gmail.com
-            <br />
-            Tel: (049) 987-6543
+            {invoice?.description ?? "Customer billing details"}
           </p>
         </div>
         <div>
           <h4 className="mb-3 font-bold text-emerald-800">SHIP TO</h4>
-          <p className="font-bold">{invoice.customer}</p>
+          <p className="font-bold">{customer}</p>
           <p className="mt-1 leading-relaxed text-slate-600">
-            Poblacion, San Pablo City
-            <br />
-            Laguna, Philippines 4000
+            {invoice?.description ?? "Same as billing address"}
           </p>
         </div>
       </section>
@@ -220,21 +244,29 @@ function InvoiceDocument({ invoice = invoices[0] }: { invoice?: Invoice }) {
             <th className="px-3 py-3 text-left">ACCOUNT</th>
             <th className="px-3 py-3 text-center">QTY</th>
             <th className="px-3 py-3 text-right">UNIT PRICE</th>
-            <th className="px-3 py-3 text-right">AMOUNT (₱)</th>
+            <th className="px-3 py-3 text-right">AMOUNT</th>
           </tr>
         </thead>
         <tbody>
-          {printInvoiceItems.map((item, index) => (
-            <tr key={item.description} className="border-b">
+          {(invoice?.items ?? []).map((item, index) => (
+            <tr key={item.id} className="border-b">
               <td className="px-3 py-4 text-slate-600">{index + 1}</td>
               <td className="px-3 py-4">
                 <p className="font-semibold">{item.description}</p>
-                <p className="mt-1 text-slate-500">{item.note}</p>
+                <p className="mt-1 text-slate-500">
+                  {invoice?.notes ?? "Invoice item"}
+                </p>
               </td>
-              <td className="px-3 py-4">{item.account}</td>
-              <td className="px-3 py-4 text-center">{item.qty}</td>
-              <td className="px-3 py-4 text-right">{item.unitPrice}</td>
-              <td className="px-3 py-4 text-right font-semibold">{item.amount}</td>
+              <td className="px-3 py-4">{item.account ?? "-"}</td>
+              <td className="px-3 py-4 text-center">
+                {amountOf(item.quantity)}
+              </td>
+              <td className="px-3 py-4 text-right">
+                {currency.format(amountOf(item.unitPrice))}
+              </td>
+              <td className="px-3 py-4 text-right font-semibold">
+                {currency.format(amountOf(item.amount))}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -244,25 +276,26 @@ function InvoiceDocument({ invoice = invoices[0] }: { invoice?: Invoice }) {
         <div>
           <h4 className="mb-2 font-bold text-emerald-800">NOTES</h4>
           <p className="leading-relaxed text-slate-700">
-            Thank you for your continued support and partnership in the ministry.
+            {invoice?.notes ??
+              "Thank you for your continued support and partnership in the ministry."}
           </p>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span className="font-semibold">33,750.00</span>
+            <span className="font-semibold">{currency.format(subtotal)}</span>
           </div>
           <div className="flex justify-between">
             <span>Less: Discount</span>
-            <span>0.00</span>
+            <span>{currency.format(discount)}</span>
           </div>
           <div className="flex justify-between">
-            <span>VAT (12%)</span>
-            <span>4,050.00</span>
+            <span>Tax</span>
+            <span>{currency.format(tax)}</span>
           </div>
           <div className="flex justify-between border-t pt-3 text-base font-extrabold">
             <span>TOTAL AMOUNT DUE</span>
-            <span className="text-emerald-800">₱ 37,800.00</span>
+            <span className="text-emerald-800">{currency.format(total)}</span>
           </div>
         </div>
       </section>
@@ -270,15 +303,15 @@ function InvoiceDocument({ invoice = invoices[0] }: { invoice?: Invoice }) {
       <section className="rounded-md bg-emerald-50 p-6">
         <h4 className="mb-3 font-bold text-emerald-800">PAYMENT DETAILS</h4>
         <dl className="grid grid-cols-[120px_1fr] gap-y-1">
-          <dt>Bank Name:</dt>
-          <dd>BPI - Dasmarinas Branch</dd>
-          <dt>Account Name:</dt>
-          <dd>Pearl of the Orient International Auxiliary Chaplain Values Educators Inc.</dd>
-          <dt>Account Number:</dt>
-          <dd>1234-5678-90</dd>
+          <dt>Method:</dt>
+          <dd>{invoice?.paymentMethod ?? "-"}</dd>
+          <dt>Terms:</dt>
+          <dd>{invoice?.paymentTerms ?? "-"}</dd>
+          <dt>Bank:</dt>
+          <dd>{invoice?.bankAccount ?? "-"}</dd>
         </dl>
         <p className="mt-3 italic text-slate-600">
-          Please include your invoice number as payment reference.
+          Please include invoice number as payment reference.
         </p>
       </section>
 
@@ -307,7 +340,7 @@ function InvoiceDocument({ invoice = invoices[0] }: { invoice?: Invoice }) {
         Thank you!
       </p>
       <footer className="mt-8 border-t border-emerald-800 pt-4 text-center text-[10px] text-slate-500">
-        This is a computer generated invoice and does not require a signature.
+        This is a computer generated invoice and does not require signature.
       </footer>
     </article>
   );

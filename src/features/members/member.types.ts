@@ -85,3 +85,30 @@ export type ChangeMemberPasswordByAdminRequest = {
   password: string;
   confirmPassword: string;
 };
+
+export type MemberCredentialDocumentType = "CERTIFICATE" | "RECOGNITION";
+
+export type GenerateMemberCredentialDocumentRequest = {
+  memberId: string;
+  type: MemberCredentialDocumentType;
+};
+
+export type MemberCredentialDocument = {
+  id: string;
+  documentNumber: string;
+  barcodeNumber: string | null;
+  verificationToken: string;
+  type: MemberCredentialDocumentType;
+  status: "ACTIVE" | "REVOKED";
+  title: string | null;
+  issuedAt: string;
+  memberId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MemberCredentialDocumentResponse = {
+  code: string;
+  message: string;
+  data: MemberCredentialDocument;
+};

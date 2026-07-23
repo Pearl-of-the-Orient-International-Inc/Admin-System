@@ -5,6 +5,7 @@ import {
   IconBuildingWarehouse,
   IconCalendarEvent,
   IconChartBar,
+  IconClipboardList,
   IconDatabase,
   IconHeartHandshake,
   IconLayoutDashboard,
@@ -91,6 +92,11 @@ const data = {
       title: "Events",
       url: "/events",
       icon: IconCalendarEvent,
+    },
+    {
+      title: "Task Management",
+      url: "/task-management",
+      icon: IconClipboardList,
     },
     {
       title: "Accounting",

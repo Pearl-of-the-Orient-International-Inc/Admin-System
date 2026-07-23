@@ -1,0 +1,11 @@
+export type {
+  AccountingReceivable as Invoice,
+  AccountingReceivableItem as InvoiceItem,
+  AccountingReceivablePayload as InvoicePayload,
+  AccountingReceivablePayloadItem as InvoicePayloadItem,
+  AccountingReceivableQueryParams as InvoiceQueryParams,
+  AccountingReceivableResponse as InvoiceResponse,
+  AccountingReceivablesResponse as InvoicesResponse,
+  AccountingReceivablesSummary as InvoicesSummary,
+  AccountingReceivableStatus as InvoiceStatus,
+} from "@/features/accounts-receivable/accounts-receivable.types";

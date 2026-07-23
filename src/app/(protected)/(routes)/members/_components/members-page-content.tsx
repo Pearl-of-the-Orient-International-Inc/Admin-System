@@ -77,6 +77,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ImportMembersButton } from "./import-members-button";
 import { MemberOfficeAssignmentDialog } from "./member-office-assignment-dialog";
 import { MemberDetailsSheet } from "./member-details-sheet";
+import { MemberBarcodeDialog } from "./member-barcode-dialog";
 import { MemberQrCodeDialog } from "./member-qr-code-dialog";
 import {
   branchOfServiceOptions,
@@ -125,6 +126,8 @@ export function MembersPageContent() {
   const [qrDialogMember, setQrDialogMember] = useState<MemberRecord | null>(
     null,
   );
+  const [barcodeDialogMember, setBarcodeDialogMember] =
+    useState<MemberRecord | null>(null);
   const [detailsMemberId, setDetailsMemberId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [memberTypeFilter, setMemberTypeFilter] = useState<string>("all");
@@ -607,6 +610,10 @@ export function MembersPageContent() {
 
   const handleGenerateQrCode = (member: MemberRecord) => {
     setQrDialogMember(member);
+  };
+
+  const handleGenerateBarcode = (member: MemberRecord) => {
+    setBarcodeDialogMember(member);
   };
 
   const handleUpdateMemberType = async (
@@ -1160,6 +1167,7 @@ export function MembersPageContent() {
                         onEditDetails={handleEditDetails}
                         onAssignOffice={handleAssignOffice}
                         onRequestToggleMemberArchiveState={handleSuspendMember}
+                        onGenerateBarcode={handleGenerateBarcode}
                         onGenerateQrCode={handleGenerateQrCode}
                         onUpdateMemberUniqueId={handleUpdateMemberUniqueId}
                         onUpdateMemberType={handleUpdateMemberType}
@@ -1197,6 +1205,16 @@ export function MembersPageContent() {
         onOpenChange={(open) => {
           if (!open) {
             setQrDialogMember(null);
+          }
+        }}
+      />
+
+      <MemberBarcodeDialog
+        member={barcodeDialogMember}
+        open={Boolean(barcodeDialogMember)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBarcodeDialogMember(null);
           }
         }}
       />
