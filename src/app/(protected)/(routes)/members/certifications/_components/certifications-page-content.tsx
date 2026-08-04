@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import bwipjs from "bwip-js/browser";
 import { Layers3, Plus, Sparkles, Users } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
+import QRCode from "qrcode";
 
 import { SummaryStatCard } from "@/components/SummaryStatCard";
 import { Button } from "@/components/ui/button";
 import { MemberStatus } from "@/enums";
+import * as memberApi from "@/features/members/member.api";
 import { useMembersQuery } from "@/features/members/member.hooks";
 import { useToast } from "@/hooks/use-toast";
 import { generateCertificateBatchPdf } from "@/lib/certificate";
@@ -16,6 +19,7 @@ import { CertificateLayoutPlacementDialog } from "./certificate-layout-placement
 import { CertificateLayoutLibrary } from "./certificate-layout-library";
 import { CertificateLayoutUploadCard } from "./certificate-layout-upload-card";
 import type {
+  CertificateCodePlacement,
   CertificateNamePlacement,
   CertificatePreviewItem,
   UploadedCertificateLayout,
@@ -29,6 +33,27 @@ const DEFAULT_NAME_PLACEMENT: CertificateNamePlacement = {
   fontSizePercent: 4.8,
   colorHex: "#034316",
   forceUppercase: true,
+};
+
+const DEFAULT_CODE_PLACEMENT: CertificateCodePlacement = {
+  qr: {
+    enabled: true,
+    centerXPercent: 86,
+    centerYPercent: 88,
+    sizePercent: 11,
+  },
+  barcode: {
+    enabled: true,
+    centerXPercent: 24,
+    centerYPercent: 90,
+    widthPercent: 24,
+    heightPercent: 7,
+  },
+};
+
+type CertificateCredentialAssets = {
+  qrCodeDataUrl: string | null;
+  barcodeDataUrl: string | null;
 };
 
 function isDefinedMember<T>(member: T | undefined): member is T {
@@ -45,6 +70,7 @@ export function CertificationsPageContent() {
   const layoutInputRef = useRef<HTMLInputElement | null>(null);
   const uploadedLayoutsRef = useRef<UploadedCertificateLayout[]>([]);
   const previewItemsRef = useRef<CertificatePreviewItem[]>([]);
+  const credentialAssetsRef = useRef<Record<string, CertificateCredentialAssets>>({});
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [uploadedLayouts, setUploadedLayouts] = useState<UploadedCertificateLayout[]>([]);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
@@ -104,6 +130,40 @@ export function CertificationsPageContent() {
   const editingLayout =
     uploadedLayouts.find((layout) => layout.id === editingLayoutId) ?? null;
   const isInvalid = checkedParticipants.length === 0 || !selectedLayout;
+  const websiteUrl =
+    process.env.NEXT_PUBLIC_WEBSITE_URL?.replace(/\/$/, "") ??
+    "https://pearlchaplaincy.org";
+
+  const getCertificateCredentialAssets = useCallback(
+    async (member: MemberRecord): Promise<CertificateCredentialAssets> => {
+      const cached = credentialAssetsRef.current[member.id];
+      if (cached) return cached;
+
+      const credentialDocument = await memberApi.generateMemberCredentialDocument({
+        memberId: member.id,
+        type: "CERTIFICATE",
+      });
+      const verificationUrl = `${websiteUrl}/credentials/verify/${encodeURIComponent(
+        credentialDocument.verificationToken,
+      )}`;
+      const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
+        width: 400,
+        margin: 2,
+        color: {
+          dark: "#111111",
+          light: "#ffffff",
+        },
+      });
+      const barcodeDataUrl = credentialDocument.barcodeNumber
+        ? generateBarcodeDataUrl(credentialDocument.barcodeNumber)
+        : null;
+      const nextAssets = { qrCodeDataUrl, barcodeDataUrl };
+
+      credentialAssetsRef.current[member.id] = nextAssets;
+      return nextAssets;
+    },
+    [websiteUrl],
+  );
 
   useEffect(() => {
     setCheckedParticipantIds((current) => {
@@ -137,12 +197,15 @@ export function CertificationsPageContent() {
           if (!member) continue;
 
           const participantName = buildMemberName(member);
+          const credentialAssets = await getCertificateCredentialAssets(member);
           const previewBlob = await generateCertificateBatchPdf({
             layoutUrl: selectedLayout.previewUrl,
             namePlacement: selectedLayout.namePlacement,
+            codePlacement: selectedLayout.codePlacement,
             entries: [
               {
                 recipientName: participantName,
+                ...credentialAssets,
               },
             ],
           });
@@ -192,6 +255,7 @@ export function CertificationsPageContent() {
     };
   }, [
     checkedParticipants,
+    getCertificateCredentialAssets,
     isInvalid,
     selectedLayout,
   ]);
@@ -222,6 +286,10 @@ export function CertificationsPageContent() {
           pageWidth: width,
           pageHeight: height,
           namePlacement: { ...DEFAULT_NAME_PLACEMENT },
+          codePlacement: {
+            qr: { ...DEFAULT_CODE_PLACEMENT.qr },
+            barcode: { ...DEFAULT_CODE_PLACEMENT.barcode },
+          },
         });
       } catch {
         toast({
@@ -319,9 +387,13 @@ export function CertificationsPageContent() {
       const batchPdf = await generateCertificateBatchPdf({
         layoutUrl: selectedLayout.previewUrl,
         namePlacement: selectedLayout.namePlacement,
-        entries: checkedParticipants.map((member) => ({
-          recipientName: buildMemberName(member),
-        })),
+        codePlacement: selectedLayout.codePlacement,
+        entries: await Promise.all(
+          checkedParticipants.map(async (member) => ({
+            recipientName: buildMemberName(member),
+            ...(await getCertificateCredentialAssets(member)),
+          })),
+        ),
       });
 
       const objectUrl = window.URL.createObjectURL(batchPdf);
@@ -470,7 +542,8 @@ export function CertificationsPageContent() {
               layout.id === layoutId
                 ? {
                     ...layout,
-                    namePlacement: placement,
+                    namePlacement: placement.namePlacement,
+                    codePlacement: placement.codePlacement,
                   }
                 : layout,
             ),
@@ -478,11 +551,45 @@ export function CertificationsPageContent() {
 
           toast({
             title: "Placement saved",
-            description: "This layout will now use its own recipient-name position.",
+            description: "This layout will now use its own name, QR, and barcode positions.",
             variant: "success",
           });
         }}
       />
     </section>
   );
+}
+
+type MemberRecord = {
+  id: string;
+  firstName: string;
+  middleInitial: string | null;
+  lastName: string;
+  extensionName: string | null;
+  user: {
+    email: string;
+    avatar: string | null;
+  };
+};
+
+function generateBarcodeDataUrl(value: string) {
+  if (typeof document === "undefined") return null;
+
+  try {
+    const canvas = document.createElement("canvas");
+    bwipjs.toCanvas(canvas, {
+      bcid: "ean13",
+      text: value,
+      scale: 3,
+      height: 22,
+      includetext: true,
+      textxalign: "center",
+      textsize: 10,
+      backgroundcolor: "FFFFFF",
+    });
+
+    return canvas.toDataURL("image/png");
+  } catch {
+    return null;
+  }
 }

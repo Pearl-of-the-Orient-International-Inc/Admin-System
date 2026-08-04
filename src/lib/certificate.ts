@@ -9,14 +9,33 @@ type CertificateNamePlacement = {
   forceUppercase: boolean;
 };
 
+type CertificateCodePlacement = {
+  qr: {
+    enabled: boolean;
+    centerXPercent: number;
+    centerYPercent: number;
+    sizePercent: number;
+  };
+  barcode: {
+    enabled: boolean;
+    centerXPercent: number;
+    centerYPercent: number;
+    widthPercent: number;
+    heightPercent: number;
+  };
+};
+
 type CertificateBatchEntry = {
   recipientName: string;
+  qrCodeDataUrl?: string | null;
+  barcodeDataUrl?: string | null;
 };
 
 type GenerateCertificateBatchPdfInput = {
   layoutUrl: string;
   entries: CertificateBatchEntry[];
   namePlacement?: CertificateNamePlacement;
+  codePlacement?: CertificateCodePlacement;
 };
 
 const DEFAULT_NAME_PLACEMENT: CertificateNamePlacement = {
@@ -26,6 +45,22 @@ const DEFAULT_NAME_PLACEMENT: CertificateNamePlacement = {
   fontSizePercent: 4.8,
   colorHex: "#034316",
   forceUppercase: true,
+};
+
+const DEFAULT_CODE_PLACEMENT: CertificateCodePlacement = {
+  qr: {
+    enabled: true,
+    centerXPercent: 86,
+    centerYPercent: 88,
+    sizePercent: 11,
+  },
+  barcode: {
+    enabled: true,
+    centerXPercent: 24,
+    centerYPercent: 90,
+    widthPercent: 24,
+    heightPercent: 7,
+  },
 };
 
 async function fetchAsBytes(url: string) {
@@ -64,6 +99,11 @@ function hexToRgb(hex: string) {
   const blue = Number.parseInt(normalized.slice(4, 6), 16) / 255;
 
   return rgb(red, green, blue);
+}
+
+async function dataUrlToBytes(dataUrl: string) {
+  const response = await fetch(dataUrl);
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 function fitTextSizeToWidth(params: {
@@ -108,6 +148,7 @@ export async function generateCertificateBatchPdf({
   layoutUrl,
   entries,
   namePlacement = DEFAULT_NAME_PLACEMENT,
+  codePlacement = DEFAULT_CODE_PLACEMENT,
 }: GenerateCertificateBatchPdfInput): Promise<Blob> {
   const templateBytes = await fetchAsBytes(layoutUrl);
   const batchDoc = await PDFDocument.create();
@@ -146,6 +187,44 @@ export async function generateCertificateBatchPdf({
       font: serifBold,
       color: accent,
     });
+
+    if (codePlacement.qr.enabled && entry.qrCodeDataUrl) {
+      const qrImage = await templateDoc.embedPng(await dataUrlToBytes(entry.qrCodeDataUrl));
+      const qrSize =
+        shortestSide * clamp(codePlacement.qr.sizePercent, 3, 35) / 100;
+      const qrCenterX =
+        pageWidth * clamp(codePlacement.qr.centerXPercent, 0, 100) / 100;
+      const qrCenterYFromTop =
+        pageHeight * clamp(codePlacement.qr.centerYPercent, 0, 100) / 100;
+
+      page.drawImage(qrImage, {
+        x: qrCenterX - qrSize / 2,
+        y: pageHeight - qrCenterYFromTop - qrSize / 2,
+        width: qrSize,
+        height: qrSize,
+      });
+    }
+
+    if (codePlacement.barcode.enabled && entry.barcodeDataUrl) {
+      const barcodeImage = await templateDoc.embedPng(
+        await dataUrlToBytes(entry.barcodeDataUrl),
+      );
+      const barcodeWidth =
+        pageWidth * clamp(codePlacement.barcode.widthPercent, 5, 80) / 100;
+      const barcodeHeight =
+        pageHeight * clamp(codePlacement.barcode.heightPercent, 2, 30) / 100;
+      const barcodeCenterX =
+        pageWidth * clamp(codePlacement.barcode.centerXPercent, 0, 100) / 100;
+      const barcodeCenterYFromTop =
+        pageHeight * clamp(codePlacement.barcode.centerYPercent, 0, 100) / 100;
+
+      page.drawImage(barcodeImage, {
+        x: barcodeCenterX - barcodeWidth / 2,
+        y: pageHeight - barcodeCenterYFromTop - barcodeHeight / 2,
+        width: barcodeWidth,
+        height: barcodeHeight,
+      });
+    }
 
     const personalizedBytes = await templateDoc.save();
     const personalizedDoc = await PDFDocument.load(personalizedBytes);

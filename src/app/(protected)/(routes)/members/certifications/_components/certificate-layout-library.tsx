@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, ImagePlus, Move, Trash2 } from "lucide-react";
+import { Barcode, FileText, ImagePlus, Move, QrCode, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -63,7 +63,7 @@ export function CertificateLayoutLibrary({
                       onClick={() => onEditPlacement(layout.id)}
                       className="rounded-full bg-white/95 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm"
                     >
-                      Position name
+                      Position elements
                     </button>
                     <button
                       type="button"
@@ -97,6 +97,18 @@ export function CertificateLayoutLibrary({
                     <span>
                       Name at {layout.namePlacement.centerXPercent.toFixed(0)}% /{" "}
                       {layout.namePlacement.centerYPercent.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      <QrCode className="size-3.5" />
+                      QR {layout.codePlacement.qr.centerXPercent.toFixed(0)}% /{" "}
+                      {layout.codePlacement.qr.centerYPercent.toFixed(0)}%
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Barcode className="size-3.5" />
+                      Barcode {layout.codePlacement.barcode.centerXPercent.toFixed(0)}% /{" "}
+                      {layout.codePlacement.barcode.centerYPercent.toFixed(0)}%
                     </span>
                   </div>
                   <p className="truncate text-xs text-muted-foreground">{layout.fileName}</p>
