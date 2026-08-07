@@ -30,6 +30,7 @@ import {
   usePendingMembersQuery,
   useUpdateMemberStatusMutation,
 } from "@/features/members/member.hooks";
+import { toApiError } from "@/lib/http-client";
 import { useToast } from "@/hooks/use-toast";
 import {
   mapMemberToRecord,
@@ -37,6 +38,32 @@ import {
 } from "../../_components/members-data";
 import { PendingMembersDataTable } from "./pending-members-data-table";
 import { PendingMemberDetailsSheet } from "./pending-member-details-sheet";
+
+type BulkApprovalFailure = {
+  member: MemberRecord;
+  reason: string;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  const apiError = toApiError(error);
+  return apiError.message ?? fallback;
+};
+
+const formatBulkApprovalFailureMessage = (
+  failures: BulkApprovalFailure[],
+  approvedCount: number,
+) => {
+  const failedNames = failures
+    .slice(0, 3)
+    .map(({ member, reason }) => `${member.fullName}: ${reason}`)
+    .join("; ");
+  const extraCount = failures.length - 3;
+  const approvalSummary =
+    approvedCount > 0 ? `${approvedCount} approved. ` : "";
+  const extraSummary = extraCount > 0 ? `; +${extraCount} more failed` : "";
+
+  return `${approvalSummary}${failures.length} failed - ${failedNames}${extraSummary}`;
+};
 
 export function PendingMembersPageContent() {
   const { toast } = useToast();
@@ -83,11 +110,14 @@ export function PendingMembersPageContent() {
         title: "Application approved",
         description: `${member.fullName} has been approved.`,
       });
-    } catch {
+    } catch (error: unknown) {
       toast({
         variant: "error",
         title: "Approval failed",
-        description: `Unable to approve ${member.fullName} right now.`,
+        description: `${member.fullName}: ${getErrorMessage(
+          error,
+          "Unable to approve this application right now.",
+        )}`,
       });
     } finally {
       setPendingActionMemberId(null);
@@ -112,28 +142,53 @@ export function PendingMembersPageContent() {
 
     try {
       setIsBulkApprovePending(true);
-      await Promise.all(
-        selectedMembers.map((member) =>
-          updateMemberStatusMutation.mutateAsync({
+      const failures: BulkApprovalFailure[] = [];
+      let successfulApprovals = 0;
+
+      for (const member of selectedMembers) {
+        try {
+          await updateMemberStatusMutation.mutateAsync({
             memberId: member.memberId,
             status: MemberStatus.APPROVED,
-          }),
-        ),
-      );
-      setApprovedCount((current) => current + selectedMembers.length);
-      toast({
-        variant: "success",
-        title: "Applications approved",
-        description:
-          selectedMembers.length === 1
-            ? `${selectedMembers[0]?.fullName} has been approved.`
-            : `${selectedMembers.length} applications have been approved.`,
-      });
-    } catch {
+          });
+          successfulApprovals += 1;
+        } catch (error: unknown) {
+          failures.push({
+            member,
+            reason: getErrorMessage(
+              error,
+              "Unable to approve this application right now.",
+            ),
+          });
+        }
+      }
+
+      if (successfulApprovals > 0) {
+        setApprovedCount((current) => current + successfulApprovals);
+      }
+
+      if (failures.length === 0) {
+        toast({
+          variant: "success",
+          title: "Applications approved",
+          description:
+            selectedMembers.length === 1
+              ? `${selectedMembers[0]?.fullName} has been approved.`
+              : `${selectedMembers.length} applications have been approved.`,
+        });
+        return;
+      }
+
       toast({
         variant: "error",
-        title: "Bulk approval failed",
-        description: "One or more selected applications could not be approved.",
+        title:
+          successfulApprovals > 0
+            ? "Bulk approval partially completed"
+            : "Bulk approval failed",
+        description: formatBulkApprovalFailureMessage(
+          failures,
+          successfulApprovals,
+        ),
       });
     } finally {
       setIsBulkApprovePending(false);
