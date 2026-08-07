@@ -23,6 +23,8 @@ import { PageErrorState } from "@/components/PageErrorState";
 import { PageLoadingState } from "@/components/PageLoadingState";
 import {
   useAccountsQuery,
+  useChangeAccountPasswordMutation,
+  useResendAccountEmailVerificationMutation,
   useUpdateAccountMutation,
 } from "@/features/accounts/account.hooks";
 import { type AccountRecord } from "./accounts-data";
@@ -38,6 +40,9 @@ export function AccountsPageContent() {
     useState<AccountSummaryFilter>("ALL");
   const accountsQuery = useAccountsQuery();
   const updateAccountMutation = useUpdateAccountMutation();
+  const changeAccountPasswordMutation = useChangeAccountPasswordMutation();
+  const resendAccountEmailVerificationMutation =
+    useResendAccountEmailVerificationMutation();
 
   const accounts = useMemo<AccountRecord[]>(
     () =>
@@ -49,6 +54,7 @@ export function AccountsPageContent() {
         role: UserType.ADMIN,
         position: (user.position as UserPosition | null) ?? null,
         status: user.accountStatus ?? UserAccountStatus.ACTIVE,
+        isEmailVerified: Boolean(user.isEmailVerified),
         isTwoFactorEnabled: Boolean(user.isTwoFactorEnabled),
         createdAt: user.createdAt,
         lastSignInAt: user.updatedAt ?? user.createdAt,
@@ -135,6 +141,54 @@ export function AccountsPageContent() {
       toast({
         title: "Retrieve failed",
         description: apiError.message ?? "Unable to retrieve account.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleChangeAccountPassword = async (
+    account: AccountRecord,
+    password: string,
+    confirmPassword: string,
+  ) => {
+    try {
+      await changeAccountPasswordMutation.mutateAsync({
+        userId: account.id,
+        password,
+        confirmPassword,
+      });
+      toast({
+        title: "Password updated",
+        description: `${account.fullName}'s password has been changed.`,
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Password update failed",
+        description: apiError.message ?? "Unable to change account password.",
+        variant: "error",
+      });
+      throw error;
+    }
+  };
+
+  const handleResendAccountEmailVerification = async (
+    account: AccountRecord,
+  ) => {
+    try {
+      await resendAccountEmailVerificationMutation.mutateAsync(account.id);
+      toast({
+        title: "Verification email sent",
+        description: `A verification link was sent to ${account.email}.`,
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Resend failed",
+        description:
+          apiError.message ?? "Unable to resend account verification email.",
         variant: "error",
       });
     }
@@ -240,8 +294,22 @@ export function AccountsPageContent() {
               ) : (
                 <AccountsDataTable
                   data={filteredAccounts}
+                  changingPasswordAccountId={
+                    changeAccountPasswordMutation.isPending
+                      ? changeAccountPasswordMutation.variables?.userId ?? null
+                      : null
+                  }
+                  resendingVerificationAccountId={
+                    resendAccountEmailVerificationMutation.isPending
+                      ? resendAccountEmailVerificationMutation.variables ?? null
+                      : null
+                  }
                   onArchiveAccount={handleArchiveAccount}
                   onRetrieveAccount={handleRetrieveAccount}
+                  onChangeAccountPassword={handleChangeAccountPassword}
+                  onResendAccountEmailVerification={
+                    handleResendAccountEmailVerification
+                  }
                 />
               )}
             </CardContent>

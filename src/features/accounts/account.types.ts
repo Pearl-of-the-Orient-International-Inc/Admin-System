@@ -22,3 +22,9 @@ export interface UpdateAccountRequest {
   isTwoFactorEnabled?: boolean;
   notes?: string;
 }
+
+export interface ChangeAccountPasswordRequest {
+  userId: string;
+  password: string;
+  confirmPassword: string;
+}

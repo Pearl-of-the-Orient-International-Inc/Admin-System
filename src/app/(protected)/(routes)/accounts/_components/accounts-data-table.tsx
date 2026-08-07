@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -9,6 +10,9 @@ import {
   ArrowDownUp,
   Copy,
   Edit,
+  LoaderCircle,
+  LockKeyhole,
+  MailCheck,
   MoreHorizontal,
   RotateCcw,
 } from "lucide-react";
@@ -26,21 +30,96 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GlobalDataTable } from "@/components/DataTable";
 import { useToast } from "@/hooks/use-toast";
 import { UserAccountStatus } from "@/enums";
+import { useCurrentUserQuery } from "@/features/auth/auth.hooks";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { AccountRecord } from "./accounts-data";
 import { formatPositionLabel } from "./accounts-data";
 
 type AccountsDataTableProps = {
   data: AccountRecord[];
+  changingPasswordAccountId?: string | null;
+  resendingVerificationAccountId?: string | null;
   onArchiveAccount: (accountId: string) => void;
   onRetrieveAccount: (accountId: string) => void;
+  onChangeAccountPassword?: (
+    account: AccountRecord,
+    password: string,
+    confirmPassword: string,
+  ) => Promise<void>;
+  onResendAccountEmailVerification?: (
+    account: AccountRecord,
+  ) => Promise<void>;
 };
 
 export function AccountsDataTable({
   data,
+  changingPasswordAccountId = null,
+  resendingVerificationAccountId = null,
   onArchiveAccount,
   onRetrieveAccount,
+  onChangeAccountPassword,
+  onResendAccountEmailVerification,
 }: AccountsDataTableProps) {
   const { toast } = useToast();
+  const { data: currentUser, isLoading: isCurrentUserLoading } =
+    useCurrentUserQuery();
+  const [passwordDialogAccount, setPasswordDialogAccount] =
+    useState<AccountRecord | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const canUseItActions =
+    !isCurrentUserLoading &&
+    currentUser?.role === "ADMIN" &&
+    currentUser?.position === "IT";
+  const canChangePassword =
+    canUseItActions && Boolean(onChangeAccountPassword);
+  const canResendVerification =
+    canUseItActions && Boolean(onResendAccountEmailVerification);
+  const isPasswordChangePending =
+    Boolean(passwordDialogAccount) &&
+    changingPasswordAccountId === passwordDialogAccount?.id;
+
+  const closePasswordDialog = () => {
+    if (isPasswordChangePending) return;
+    setPasswordDialogAccount(null);
+    setPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+  };
+
+  const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!passwordDialogAccount || !onChangeAccountPassword) return;
+
+    if (password !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setPasswordError(null);
+    try {
+      await onChangeAccountPassword(
+        passwordDialogAccount,
+        password,
+        confirmPassword,
+      );
+      closePasswordDialog();
+    } catch {
+      // Parent handler owns toast/error messaging.
+    }
+  };
 
   const columns = useMemo<ColumnDef<AccountRecord>[]>(
     () => [
@@ -101,10 +180,10 @@ export function AccountsDataTable({
         },
       },
       {
-        accessorKey: "isVerified",
+        accessorKey: "isEmailVerified",
         header: "Email Verified",
         cell: ({ row }) =>
-          row.original.isTwoFactorEnabled ? (
+          row.original.isEmailVerified ? (
             <Badge variant="success">Verified</Badge>
           ) : (
             <Badge variant="error">Not Verified</Badge>
@@ -127,18 +206,19 @@ export function AccountsDataTable({
   );
 
   return (
-    <GlobalDataTable
-      data={data}
-      columns={columns}
-      cellAction={(row) => (
-        <DropdownMenu>
+    <>
+      <GlobalDataTable
+        data={data}
+        columns={columns}
+        cellAction={(row) => (
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-sm">
               <MoreHorizontal className="size-4" />
               <span className="sr-only">Open row actions</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={async () => {
@@ -173,6 +253,42 @@ export function AccountsDataTable({
                 Activity
               </Link>
             </DropdownMenuItem>
+            {canChangePassword ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  setPasswordDialogAccount(row.original);
+                  setPassword("");
+                  setConfirmPassword("");
+                  setPasswordError(null);
+                }}
+              >
+                <LockKeyhole className="size-4" />
+                Change password
+              </DropdownMenuItem>
+            ) : null}
+            {canResendVerification ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!onResendAccountEmailVerification) return;
+                  void onResendAccountEmailVerification(row.original);
+                }}
+                disabled={
+                  row.original.isEmailVerified ||
+                  resendingVerificationAccountId === row.original.id
+                }
+              >
+                {resendingVerificationAccountId === row.original.id ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <MailCheck className="size-4" />
+                )}
+                {row.original.isEmailVerified
+                  ? "Email verified"
+                  : resendingVerificationAccountId === row.original.id
+                    ? "Sending..."
+                    : "Resend verification"}
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuSeparator />
             {row.original.status === UserAccountStatus.SUSPENDED ? (
               <DropdownMenuItem
@@ -191,11 +307,85 @@ export function AccountsDataTable({
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-      filterPlaceholder="Search account name, email, position, role, status..."
-      emptyMessage="No accounts found."
-      exportFileName="accounts"
-    />
+          </DropdownMenu>
+        )}
+        filterPlaceholder="Search account name, email, position, role, status..."
+        emptyMessage="No accounts found."
+        exportFileName="accounts"
+      />
+
+      <Dialog
+        open={Boolean(passwordDialogAccount)}
+        onOpenChange={(open) => {
+          if (!open) closePasswordDialog();
+        }}
+      >
+        <DialogContent>
+          <form onSubmit={handlePasswordSubmit} className="space-y-5">
+            <DialogHeader>
+              <DialogTitle>Change account password</DialogTitle>
+              <DialogDescription>
+                Set a new password for {passwordDialogAccount?.fullName}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="account-password">New password</Label>
+                <Input
+                  id="account-password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                  disabled={isPasswordChangePending}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="account-confirm-password">
+                  Confirm password
+                </Label>
+                <Input
+                  id="account-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                  aria-invalid={Boolean(passwordError)}
+                  disabled={isPasswordChangePending}
+                  required
+                />
+                {passwordError ? (
+                  <p className="text-destructive text-sm">{passwordError}</p>
+                ) : null}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={closePasswordDialog}
+                disabled={isPasswordChangePending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isPasswordChangePending}>
+                {isPasswordChangePending ? (
+                  <>
+                    <LoaderCircle className="size-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update password"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

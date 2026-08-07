@@ -4,7 +4,11 @@ import type {
   UserEnvelopeResponse,
   UserListResponse,
 } from "@/lib/api-types";
-import type { CreateAccountRequest, UpdateAccountRequest } from "./account.types";
+import type {
+  ChangeAccountPasswordRequest,
+  CreateAccountRequest,
+  UpdateAccountRequest,
+} from "./account.types";
 
 export async function getAccounts() {
   const { data } = await api.get<UserListResponse>("/users");
@@ -39,3 +43,19 @@ export async function deleteAccountById(userId: string) {
   await api.delete(`/users/${encodeURIComponent(userId)}`);
 }
 
+export async function changeAccountPassword({
+  userId,
+  password,
+  confirmPassword,
+}: ChangeAccountPasswordRequest) {
+  await api.post(`/users/${encodeURIComponent(userId)}/change-password`, {
+    password,
+    confirmPassword,
+  });
+}
+
+export async function resendAccountEmailVerification(userId: string) {
+  await api.post(
+    `/users/${encodeURIComponent(userId)}/resend-email-verification`,
+  );
+}

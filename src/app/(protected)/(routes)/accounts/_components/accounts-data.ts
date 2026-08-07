@@ -8,6 +8,7 @@ export type AccountRecord = {
   role: UserType.ADMIN | UserType.OFFICER;
   position: UserPosition | null;
   status: UserAccountStatus;
+  isEmailVerified: boolean;
   isTwoFactorEnabled: boolean;
   createdAt: string;
   lastSignInAt: string;

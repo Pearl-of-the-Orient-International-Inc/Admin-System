@@ -56,3 +56,14 @@ export const useDeleteAccountMutation = () => {
   });
 };
 
+export const useChangeAccountPasswordMutation = () =>
+  useMutation({
+    mutationFn: accountApi.changeAccountPassword,
+    meta: { feature: "accounts.changePassword" },
+  });
+
+export const useResendAccountEmailVerificationMutation = () =>
+  useMutation({
+    mutationFn: accountApi.resendAccountEmailVerification,
+    meta: { feature: "accounts.resendEmailVerification" },
+  });
