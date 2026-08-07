@@ -119,6 +119,10 @@ const data = {
           title: "Invoices",
           url: "/accounting/invoices",
         },
+        {
+          title: "Acknowledgement Receipts",
+          url: "/accounting/acknowledgement-receipts",
+        },
       ],
     },
     {
