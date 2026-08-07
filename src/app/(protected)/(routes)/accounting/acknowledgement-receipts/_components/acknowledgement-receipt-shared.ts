@@ -1,17 +1,6 @@
-import type { Invoice } from "@/features/invoices/invoices.types";
+import type { AcknowledgementReceipt } from "@/features/acknowledgement-receipts/acknowledgement-receipts.types";
 
-export type ReceiptOrganization = "POILE" | "POTSCI" | "PEARL_CHAPLAINCY";
-
-export type AcknowledgementReceiptMeta = {
-  organization: ReceiptOrganization;
-  course: string;
-  school: string;
-  paymentType: "Cash" | "Check";
-  checkNo: string;
-  cashier: string;
-};
-
-export const receiptMarker = "ACKNOWLEDGEMENT_RECEIPT";
+export type ReceiptOrganization = AcknowledgementReceipt["organization"];
 
 export const organizationLabels: Record<ReceiptOrganization, string> = {
   PEARL_CHAPLAINCY: "Pearl Chaplaincy",
@@ -44,36 +33,5 @@ export const organizationHeaders: Record<
   },
 };
 
-export const getReceiptNo = (receipt?: Invoice) =>
-  receipt?.reference?.replace("AR-", "") || receipt?.invoiceNo || "";
-
-export const getReceiptMeta = (
-  receipt?: Invoice,
-): AcknowledgementReceiptMeta => {
-  const fallback: AcknowledgementReceiptMeta = {
-    cashier: "",
-    checkNo: "",
-    course: "",
-    organization: "POILE",
-    paymentType: "Cash",
-    school: "",
-  };
-
-  if (!receipt?.notes) return fallback;
-
-  try {
-    const parsed = JSON.parse(
-      receipt.notes,
-    ) as Partial<AcknowledgementReceiptMeta>;
-    return {
-      cashier: parsed.cashier ?? fallback.cashier,
-      checkNo: parsed.checkNo ?? fallback.checkNo,
-      course: parsed.course ?? fallback.course,
-      organization: parsed.organization ?? fallback.organization,
-      paymentType: parsed.paymentType ?? fallback.paymentType,
-      school: parsed.school ?? fallback.school,
-    };
-  } catch {
-    return fallback;
-  }
-};
+export const getReceiptNo = (receipt?: AcknowledgementReceipt) =>
+  receipt?.receiptNo || "";

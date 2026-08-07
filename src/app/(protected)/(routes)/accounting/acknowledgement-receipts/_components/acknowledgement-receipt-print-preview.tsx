@@ -7,10 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Invoice } from "@/features/invoices/invoices.types";
+import type { AcknowledgementReceipt } from "@/features/acknowledgement-receipts/acknowledgement-receipts.types";
 
 import {
-  getReceiptMeta,
   getReceiptNo,
   organizationHeaders,
   organizationLabels,
@@ -77,9 +76,9 @@ function PrintSettings() {
   );
 }
 
-function ReceiptDocument({ receipt }: { receipt?: Invoice }) {
-  const meta = getReceiptMeta(receipt);
-  const header = organizationHeaders[meta.organization];
+function ReceiptDocument({ receipt }: { receipt?: AcknowledgementReceipt }) {
+  const organization = receipt?.organization ?? "POILE";
+  const header = organizationHeaders[organization];
   const rows = receipt?.items ?? [];
   const total = amountOf(receipt?.totalAmount);
 
@@ -102,27 +101,27 @@ function ReceiptDocument({ receipt }: { receipt?: Invoice }) {
           <div className="flex items-end gap-2">
             <span className="font-bold">Date:</span>
             <span className="flex-1 border-b border-black px-2">
-              {formatDate(receipt?.invoiceDate)}
+              {formatDate(receipt?.receiptDate)}
             </span>
           </div>
         </div>
         <div className="mt-5 flex items-end gap-2">
           <span className="font-bold">Name:</span>
           <span className="flex-1 border-b border-black px-2">
-            {receipt?.customer ?? ""}
+            {receipt?.name ?? ""}
           </span>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-5">
           <div className="flex items-end gap-2">
             <span className="font-bold">Course:</span>
             <span className="flex-1 border-b border-black px-2">
-              {meta.course}
+              {receipt?.course ?? ""}
             </span>
           </div>
           <div className="flex items-end gap-2">
             <span className="font-bold">School:</span>
             <span className="flex-1 border-b border-black px-2">
-              {meta.school}
+              {receipt?.school ?? ""}
             </span>
           </div>
         </div>
@@ -148,7 +147,7 @@ function ReceiptDocument({ receipt }: { receipt?: Invoice }) {
             return (
               <tr key={item?.id ?? index}>
                 <td className="h-8 border-2 border-black px-3">
-                  {item?.description ?? ""}
+                  {item?.particulars ?? ""}
                 </td>
                 <td className="border-2 border-black px-3 text-right">
                   {amountOf(item?.amount) > 0
@@ -156,9 +155,7 @@ function ReceiptDocument({ receipt }: { receipt?: Invoice }) {
                     : ""}
                 </td>
                 <td className="border-2 border-black px-3">
-                  {item?.account && item.account !== "Acknowledgement Receipt"
-                    ? item.account
-                    : ""}
+                  {item?.remarks ?? ""}
                 </td>
               </tr>
             );
@@ -179,18 +176,18 @@ function ReceiptDocument({ receipt }: { receipt?: Invoice }) {
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1">
             <span className="inline-block size-5 border-2 border-black">
-              {meta.paymentType === "Cash" ? "✓" : ""}
+              {receipt?.paymentType === "CASH" ? "X" : ""}
             </span>
             Cash
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="inline-block size-5 border-2 border-black">
-              {meta.paymentType === "Check" ? "✓" : ""}
+              {receipt?.paymentType === "CHECK" ? "X" : ""}
             </span>
             Check No.
           </span>
           <span className="min-w-30 border-b border-black px-2">
-            {meta.checkNo}
+            {receipt?.checkNo ?? ""}
           </span>
         </div>
         <p className="text-xs italic">
@@ -207,7 +204,7 @@ function ReceiptDocument({ receipt }: { receipt?: Invoice }) {
         </div>
         <div className="text-center">
           <div className="mx-auto w-72 border-b border-black px-2 pb-1">
-            {meta.cashier}
+            {receipt?.cashier ?? ""}
           </div>
           <p className="mt-2 text-xs font-bold">
             Cashier / Authorized Representative
@@ -216,7 +213,7 @@ function ReceiptDocument({ receipt }: { receipt?: Invoice }) {
       </section>
 
       <footer className="mt-10 text-center text-xs text-slate-500">
-        {organizationLabels[meta.organization]} acknowledgement receipt
+        {organizationLabels[organization]} acknowledgement receipt
       </footer>
     </article>
   );
@@ -225,7 +222,7 @@ function ReceiptDocument({ receipt }: { receipt?: Invoice }) {
 export function AcknowledgementReceiptPrintPreview({
   receipt,
 }: {
-  receipt?: Invoice;
+  receipt?: AcknowledgementReceipt;
 }) {
   return (
     <Card className="overflow-hidden py-0">

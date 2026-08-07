@@ -12,7 +12,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   AlertDialog,
@@ -58,25 +58,22 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  useCreateInvoiceMutation,
-  useDeleteInvoiceMutation,
-  useInvoicesQuery,
-} from "@/features/invoices/invoices.hooks";
+  useAcknowledgementReceiptsQuery,
+  useCreateAcknowledgementReceiptMutation,
+  useDeleteAcknowledgementReceiptMutation,
+} from "@/features/acknowledgement-receipts/acknowledgement-receipts.hooks";
 import type {
-  Invoice,
-  InvoicePayloadItem,
-} from "@/features/invoices/invoices.types";
+  AcknowledgementReceipt,
+  AcknowledgementReceiptPayloadItem,
+  ReceiptPaymentType,
+} from "@/features/acknowledgement-receipts/acknowledgement-receipts.types";
 import { useToast } from "@/hooks/use-toast";
 import { toApiError } from "@/lib/http-client";
-import { cn } from "@/lib/utils";
 
 import { AcknowledgementReceiptPrintPreview } from "./acknowledgement-receipt-print-preview";
 import {
-  type AcknowledgementReceiptMeta,
-  getReceiptMeta,
   getReceiptNo,
   organizationLabels,
-  receiptMarker,
   type ReceiptOrganization,
 } from "./acknowledgement-receipt-shared";
 
@@ -86,11 +83,11 @@ type ReceiptForm = {
   course: string;
   school: string;
   organization: ReceiptOrganization;
-  paymentType: "Cash" | "Check";
+  paymentType: ReceiptPaymentType;
   checkNo: string;
   cashier: string;
   remarks: string;
-  items: InvoicePayloadItem[];
+  items: AcknowledgementReceiptPayloadItem[];
 };
 
 const pageSize = 10;
@@ -99,8 +96,6 @@ const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
 });
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
-const amountOf = (value: string | number | null | undefined) =>
-  Number(value ?? 0);
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en-US", {
     day: "numeric",
@@ -123,25 +118,20 @@ const defaultForm = (): ReceiptForm => ({
   course: "",
   school: "",
   organization: "POILE",
-  paymentType: "Cash",
+  paymentType: "CASH",
   checkNo: "",
   cashier: "",
   remarks: "",
-  items: defaultParticulars.map((description) => ({
-    account: "Acknowledgement Receipt",
-    description,
-    quantity: 1,
-    unitPrice: 0,
+  items: defaultParticulars.map((particulars) => ({
+    amount: 0,
+    particulars,
+    remarks: "",
   })),
 });
 
-function isAcknowledgementReceipt(receipt: Invoice) {
-  return receipt.description?.startsWith(receiptMarker);
-}
-
 function formTotal(form: ReceiptForm) {
   return form.items.reduce(
-    (total, item) => total + Number(item.quantity) * Number(item.unitPrice),
+    (total, item) => total + Number(item.amount ?? 0),
     0,
   );
 }
@@ -154,39 +144,23 @@ export function AcknowledgementReceiptsPage() {
     useState<"all" | ReceiptOrganization>("all");
   const [form, setForm] = useState<ReceiptForm>(defaultForm());
   const [newReceiptOpen, setNewReceiptOpen] = useState(false);
-  const [receiptForPrint, setReceiptForPrint] = useState<Invoice | null>(null);
+  const [receiptForPrint, setReceiptForPrint] =
+    useState<AcknowledgementReceipt | null>(null);
   const [receiptPendingDelete, setReceiptPendingDelete] =
-    useState<Invoice | null>(null);
+    useState<AcknowledgementReceipt | null>(null);
 
-  const receiptsQuery = useInvoicesQuery({ limit: 100, page: 1 });
-  const createMutation = useCreateInvoiceMutation();
-  const deleteMutation = useDeleteInvoiceMutation();
-  const allReceipts = useMemo(
-    () =>
-      (receiptsQuery.data?.data ?? [])
-        .filter(isAcknowledgementReceipt)
-        .filter((receipt) => {
-          const meta = getReceiptMeta(receipt);
-          const query = search.trim().toLowerCase();
-          const matchesOrganization =
-            organization === "all" || meta.organization === organization;
-          const matchesSearch =
-            !query ||
-            receipt.customer.toLowerCase().includes(query) ||
-            getReceiptNo(receipt).toLowerCase().includes(query) ||
-            meta.course.toLowerCase().includes(query) ||
-            meta.school.toLowerCase().includes(query);
-
-          return matchesOrganization && matchesSearch;
-        }),
-    [organization, receiptsQuery.data?.data, search],
-  );
-  const receipts = allReceipts.slice((page - 1) * pageSize, page * pageSize);
-  const totalPages = Math.max(Math.ceil(allReceipts.length / pageSize), 1);
-  const totalAmount = allReceipts.reduce(
-    (total, receipt) => total + amountOf(receipt.totalAmount),
-    0,
-  );
+  const receiptsQuery = useAcknowledgementReceiptsQuery({
+    limit: pageSize,
+    organization: organization === "all" ? undefined : organization,
+    page,
+    search: search || undefined,
+  });
+  const createMutation = useCreateAcknowledgementReceiptMutation();
+  const deleteMutation = useDeleteAcknowledgementReceiptMutation();
+  const receipts = receiptsQuery.data?.data ?? [];
+  const totalPages = Math.max(receiptsQuery.data?.meta.totalPages ?? 1, 1);
+  const totalReceipts = receiptsQuery.data?.meta.total ?? 0;
+  const totalAmount = receiptsQuery.data?.summary.cards.totalAmount ?? 0;
 
   const updateForm = <K extends keyof ReceiptForm>(
     field: K,
@@ -195,7 +169,7 @@ export function AcknowledgementReceiptsPage() {
 
   const updateItem = (
     index: number,
-    field: keyof InvoicePayloadItem,
+    field: keyof AcknowledgementReceiptPayloadItem,
     value: string,
   ) => {
     setForm((current) => ({
@@ -204,10 +178,7 @@ export function AcknowledgementReceiptsPage() {
         itemIndex === index
           ? {
               ...item,
-              [field]:
-                field === "quantity" || field === "unitPrice"
-                  ? Number(value)
-                  : value,
+              [field]: field === "amount" ? Number(value) : value,
             }
           : item,
       ),
@@ -220,10 +191,9 @@ export function AcknowledgementReceiptsPage() {
       items: [
         ...current.items,
         {
-          account: "Acknowledgement Receipt",
-          description: "",
-          quantity: 1,
-          unitPrice: 0,
+          amount: 0,
+          particulars: "",
+          remarks: "",
         },
       ],
     }));
@@ -249,7 +219,7 @@ export function AcknowledgementReceiptsPage() {
       return;
     }
 
-    if (form.items.some((item) => !item.description.trim())) {
+    if (form.items.some((item) => !item.particulars.trim())) {
       toast({
         title: "Missing particulars",
         description: "Every row needs particulars.",
@@ -259,34 +229,23 @@ export function AcknowledgementReceiptsPage() {
     }
 
     try {
-      const total = formTotal(form);
       const saved = await createMutation.mutateAsync({
-        customer: form.name.trim(),
-        description: `${receiptMarker}:${organizationLabels[form.organization]}`,
-        dueDate: form.date,
-        invoiceDate: form.date,
+        cashier: form.cashier,
+        checkNo: form.checkNo,
+        course: form.course,
         items: form.items,
-        notes: JSON.stringify({
-          cashier: form.cashier,
-          checkNo: form.checkNo,
-          course: form.course,
-          organization: form.organization,
-          paymentType: form.paymentType,
-          school: form.school,
-        } satisfies AcknowledgementReceiptMeta),
-        paidAmount: total,
-        paymentMethod: form.paymentType,
-        paymentTerms: "Acknowledgement receipt",
-        reference: `AR-${Date.now().toString().slice(-6)}`,
-        status: "PAID",
-        tax: 0,
-        discount: 0,
+        name: form.name.trim(),
+        organization: form.organization,
+        paymentType: form.paymentType,
+        receiptDate: form.date,
+        remarks: form.remarks,
+        school: form.school,
       });
+      setReceiptForPrint(saved.data);
 
       toast({ title: "Acknowledgement receipt created" });
       setNewReceiptOpen(false);
       setForm(defaultForm());
-      setReceiptForPrint(saved.data);
     } catch (error) {
       toast({
         title: "Save failed",
@@ -343,7 +302,7 @@ export function AcknowledgementReceiptsPage() {
             <div>
               <p className="text-sm font-medium">Total Receipts</p>
               <p className="mt-2 text-2xl font-bold">
-                {receiptsQuery.isLoading ? "Loading..." : allReceipts.length}
+                {receiptsQuery.isLoading ? "Loading..." : totalReceipts}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Filtered receipt records
@@ -446,7 +405,6 @@ export function AcknowledgementReceiptsPage() {
               </TableRow>
             ) : receipts.length ? (
               receipts.map((receipt) => {
-                const meta = getReceiptMeta(receipt);
                 return (
                   <TableRow key={receipt.id}>
                     <TableCell>
@@ -457,15 +415,15 @@ export function AcknowledgementReceiptsPage() {
                         {getReceiptNo(receipt)}
                       </button>
                     </TableCell>
-                    <TableCell>{receipt.customer}</TableCell>
+                    <TableCell>{receipt.name}</TableCell>
                     <TableCell>
-                      {organizationLabels[meta.organization]}
+                      {organizationLabels[receipt.organization]}
                     </TableCell>
-                    <TableCell>{meta.course || "-"}</TableCell>
-                    <TableCell>{meta.school || "-"}</TableCell>
-                    <TableCell>{formatDate(receipt.invoiceDate)}</TableCell>
+                    <TableCell>{receipt.course || "-"}</TableCell>
+                    <TableCell>{receipt.school || "-"}</TableCell>
+                    <TableCell>{formatDate(receipt.receiptDate)}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {currency.format(amountOf(receipt.totalAmount))}
+                      {currency.format(Number(receipt.totalAmount))}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -513,7 +471,7 @@ export function AcknowledgementReceiptsPage() {
         <div className="flex flex-col gap-3 border-t p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
             Showing {receipts.length ? (page - 1) * pageSize + 1 : 0} to{" "}
-            {(page - 1) * pageSize + receipts.length} of {allReceipts.length}{" "}
+            {(page - 1) * pageSize + receipts.length} of {totalReceipts}{" "}
             entries
           </p>
           <div className="flex items-center gap-2">
@@ -622,25 +580,25 @@ export function AcknowledgementReceiptsPage() {
               >
                 <Input
                   placeholder="Particulars"
-                  value={item.description}
+                  value={item.particulars}
                   onChange={(event) =>
-                    updateItem(index, "description", event.target.value)
+                    updateItem(index, "particulars", event.target.value)
                   }
                 />
                 <Input
                   min="0"
                   step="0.01"
                   type="number"
-                  value={item.unitPrice}
+                  value={item.amount}
                   onChange={(event) =>
-                    updateItem(index, "unitPrice", event.target.value)
+                    updateItem(index, "amount", event.target.value)
                   }
                 />
                 <Input
                   placeholder="Remarks"
-                  value={item.account ?? ""}
+                  value={item.remarks ?? ""}
                   onChange={(event) =>
-                    updateItem(index, "account", event.target.value)
+                    updateItem(index, "remarks", event.target.value)
                   }
                 />
                 <Button
@@ -662,15 +620,15 @@ export function AcknowledgementReceiptsPage() {
               <Select
                 value={form.paymentType}
                 onValueChange={(value) =>
-                  updateForm("paymentType", value as "Cash" | "Check")
+                  updateForm("paymentType", value as ReceiptPaymentType)
                 }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Cash">Cash</SelectItem>
-                  <SelectItem value="Check">Check</SelectItem>
+                  <SelectItem value="CASH">Cash</SelectItem>
+                  <SelectItem value="CHECK">Check</SelectItem>
                 </SelectContent>
               </Select>
             </label>
@@ -679,7 +637,7 @@ export function AcknowledgementReceiptsPage() {
               <Input
                 value={form.checkNo}
                 onChange={(event) => updateForm("checkNo", event.target.value)}
-                disabled={form.paymentType === "Cash"}
+                disabled={form.paymentType === "CASH"}
               />
             </label>
             <label className="space-y-2">
@@ -759,7 +717,7 @@ export function AcknowledgementReceiptsPage() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className={cn("bg-red-600 text-white hover:bg-red-700")}
+              className="bg-red-600 text-white hover:bg-red-700"
               disabled={deleteMutation.isPending}
               onClick={(event) => {
                 event.preventDefault();
