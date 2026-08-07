@@ -6,7 +6,12 @@ import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FieldDescription, FieldGroup } from "@/components/ui/field";
-import { toApiError, useVerifyEmailMutation } from "@/features/auth/auth.hooks";
+import { Input } from "@/components/ui/input";
+import {
+  toApiError,
+  useResendEmailVerificationMutation,
+  useVerifyEmailMutation,
+} from "@/features/auth/auth.hooks";
 import { useToast } from "@/hooks/use-toast";
 
 type VerifyStatus = "idle" | "verifying" | "success" | "error";
@@ -21,8 +26,10 @@ export function ConfirmAccountForm({
 
   const { toast } = useToast();
   const verifyMutation = useVerifyEmailMutation();
+  const resendVerificationMutation = useResendEmailVerificationMutation();
   const [status, setStatus] = useState<VerifyStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [resendEmail, setResendEmail] = useState("");
 
   const statusText = useMemo(() => {
     if (status === "verifying") return "Verifying your account...";
@@ -54,7 +61,35 @@ export function ConfirmAccountForm({
       setErrorMessage(apiError.message ?? "Verification failed.");
       toast({
         title: "Verification failed",
-        description: apiError.message ?? "Invalid or expired verification link.",
+        description:
+          apiError.message ?? "Invalid verification link. Request a new email.",
+        variant: "error",
+      });
+    }
+  };
+
+  const resendVerification = async () => {
+    const email = resendEmail.trim().toLowerCase();
+    if (!email) {
+      setErrorMessage("Enter your email to resend verification.");
+      return;
+    }
+
+    try {
+      await resendVerificationMutation.mutateAsync({ email });
+      setErrorMessage(null);
+      toast({
+        title: "Verification email sent",
+        description: `A new verification link was sent to ${email}.`,
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      setStatus("error");
+      setErrorMessage(apiError.message ?? "Unable to resend verification email.");
+      toast({
+        title: "Resend failed",
+        description: apiError.message ?? "Unable to resend verification email.",
         variant: "error",
       });
     }
@@ -96,10 +131,31 @@ export function ConfirmAccountForm({
           </Button>
         </div>
 
-        {!hasToken && (
-          <FieldDescription className="text-red-600 dark:text-red-500">
-            This link is missing a token. Please request a new verification email.
-          </FieldDescription>
+        {(status === "error" || !hasToken) && (
+          <div className="space-y-3 rounded-lg border p-4">
+            <FieldDescription>
+              Need a new verification email? Enter your registered email address.
+            </FieldDescription>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                type="email"
+                value={resendEmail}
+                onChange={(event) => setResendEmail(event.target.value)}
+                placeholder="name@example.com"
+                disabled={resendVerificationMutation.isPending}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resendVerification}
+                disabled={resendVerificationMutation.isPending}
+              >
+                {resendVerificationMutation.isPending
+                  ? "Sending..."
+                  : "Resend email"}
+              </Button>
+            </div>
+          </div>
         )}
       </FieldGroup>
     </div>
