@@ -185,9 +185,6 @@ function buildFacebookPostMessage(
   newsBlog: SyncNewsBlogRequestBody["newsBlog"],
 ) {
   const plainCaption = toPlainText(newsBlog.caption);
-  const excerpt = plainCaption.length > 900
-    ? `${plainCaption.slice(0, 897).trimEnd()}...`
-    : plainCaption;
   const preface = getTemplatePreface(action);
   const hashtags = newsBlog.hashtags.length ? `\n\n${newsBlog.hashtags.join(" ")}` : "";
 
@@ -198,7 +195,7 @@ function buildFacebookPostMessage(
     "",
     preface,
     "",
-    excerpt,
+    plainCaption,
     hashtags ? `${hashtags}` : "",
   ]
     .filter(Boolean)
