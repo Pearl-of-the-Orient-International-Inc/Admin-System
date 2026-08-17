@@ -7,6 +7,7 @@ import {
   Copy,
   Eye,
   Globe,
+  LoaderCircle,
   MoreHorizontal,
   Rocket,
   SquarePen,
@@ -21,6 +22,13 @@ import {
 import { syncNewsBlogToFacebook } from "@/features/news-blogs/news-blog.api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +52,7 @@ export function NewsBlogsActionsMenu({
   const archiveNewsBlogMutation = useArchiveNewsBlogMutation();
   const retrieveNewsBlogMutation = useRetrieveNewsBlogMutation();
   const [isSyncingToFacebook, setIsSyncingToFacebook] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleCopyLink = async () => {
     try {
@@ -113,6 +122,7 @@ export function NewsBlogsActionsMenu({
   const handleSyncToFacebook = async () => {
     if (isSyncingToFacebook) return;
 
+    setIsMenuOpen(false);
     setIsSyncingToFacebook(true);
 
     try {
@@ -142,58 +152,90 @@ export function NewsBlogsActionsMenu({
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${post.title}`}>
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        {onViewPost ? (
-          <DropdownMenuItem onClick={() => onViewPost(post)}>
-            <Eye className="size-4" />
-            View preview
-          </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem onClick={handleCopyLink}>
-          <Copy className="size-4" />
-          Copy link
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={`/news-blogs/${post.id}`}>
-            <SquarePen className="size-4" />
-            Edit post
-          </Link>
-        </DropdownMenuItem>
-        {post.isActive && post.status === "DRAFT" ? (
-          <DropdownMenuItem onClick={handlePublish}>
-            <Rocket className="size-4" />
-            Publish post
-          </DropdownMenuItem>
-        ) : null}
-        {post.isActive ? (
-          <DropdownMenuItem
-            onClick={handleSyncToFacebook}
+    <>
+      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Actions for ${post.title}`}
             disabled={isSyncingToFacebook}
           >
-            <Globe className="size-4" />
-            {isSyncingToFacebook ? "Syncing..." : "Sync to Facebook"}
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          {onViewPost ? (
+            <DropdownMenuItem onClick={() => onViewPost(post)}>
+              <Eye className="size-4" />
+              View preview
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onClick={handleCopyLink}>
+            <Copy className="size-4" />
+            Copy link
           </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant={post.isActive ? "destructive" : "default"}
-          onClick={handleArchiveToggle}
-        >
+          <DropdownMenuItem asChild>
+            <Link href={`/news-blogs/${post.id}`}>
+              <SquarePen className="size-4" />
+              Edit post
+            </Link>
+          </DropdownMenuItem>
+          {post.isActive && post.status === "DRAFT" ? (
+            <DropdownMenuItem onClick={handlePublish}>
+              <Rocket className="size-4" />
+              Publish post
+            </DropdownMenuItem>
+          ) : null}
           {post.isActive ? (
-            <Archive className="size-4" />
-          ) : (
-            <Undo2 className="size-4" />
-          )}
-          {post.isActive ? "Archive" : "Retrieve"}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <DropdownMenuItem
+              onClick={handleSyncToFacebook}
+              disabled={isSyncingToFacebook}
+            >
+              <Globe className="size-4" />
+              Sync to Facebook
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant={post.isActive ? "destructive" : "default"}
+            onClick={handleArchiveToggle}
+          >
+            {post.isActive ? (
+              <Archive className="size-4" />
+            ) : (
+              <Undo2 className="size-4" />
+            )}
+            {post.isActive ? "Archive" : "Retrieve"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={isSyncingToFacebook}>
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-sm"
+          onInteractOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+        >
+          <DialogHeader className="items-center text-center">
+            <div
+              role="status"
+              aria-live="polite"
+              className="bg-primary/10 text-primary mb-2 flex size-12 items-center justify-center rounded-full"
+            >
+              <LoaderCircle className="size-6 animate-spin" />
+              <span className="sr-only">Syncing to Facebook</span>
+            </div>
+            <DialogTitle>Syncing to Facebook</DialogTitle>
+            <DialogDescription className="text-center">
+              Publishing this news/blog post to the Facebook Page. Keep this
+              window open until sync finishes.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

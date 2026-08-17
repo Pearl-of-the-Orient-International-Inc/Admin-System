@@ -453,7 +453,7 @@ export function NewsBlogForm({
             {/* Facebook header */}
             <div className="relative w-full h-60">
               <Image
-                src="https://scontent.fmnl19-1.fna.fbcdn.net/v/t39.30808-6/308422190_103951659153335_4214571081326216963_n.png?_nc_cat=108&ccb=1-7&_nc_sid=2a1932&_nc_eui2=AeGxf-_yq9_ekjFp9LgWwQ72ndpeMHY0YlSd2l4wdjRiVGfWjHpUpWJM-xtj7jBGMARGvzILvrXKggVAJJcmKSGC&_nc_ohc=j6oHH4PlfXgQ7kNvwFNpohb&_nc_oc=AdrOAjrek4KpQrTWOq02Mjj1aMRnJsswMXq3CBqp565qlXuVSjHj_BqwFXhIwn04VLk&_nc_zt=23&_nc_ht=scontent.fmnl19-1.fna&_nc_gid=qvHJoktv6_9o0XGxuAad2w&oh=00_Af19L9qg963KVmTGGx2s4giqjSxwtMvxt0FP_Fh8pL4vSQ&oe=69F0B4AE"
+                src="/main/hero.png"
                 alt="Facebook cover"
                 fill
                 className="object-cover"
