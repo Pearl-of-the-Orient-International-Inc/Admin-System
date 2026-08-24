@@ -101,15 +101,8 @@ export function NewsBlogsDataTable({
               {row.original.taggedMembers.length} tagged member{row.original.taggedMembers.length > 0 && "s"}
             </div>
             <div className="text-muted-foreground flex gap-0.5 items-center truncate flex-wrap text-xs">
-              {row.original.hashtags.map((hashtag) => (
-                <div
-                  key={hashtag}
-                  className="flex items-center gap-1"
-                >
-                  <Hash className="size-3.5" />
-                  {hashtag}
-                </div>
-              ))}
+              <Hash className="size-3.5" />
+              {row.original.hashtags.length} tag{row.original.hashtags.length > 0 && "s"}
             </div>
           </div>
         ),

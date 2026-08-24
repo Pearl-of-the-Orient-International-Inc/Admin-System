@@ -1,7 +1,15 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Archive, Copy, Edit, FileBadge2, MoreHorizontal } from "lucide-react";
+import {
+  Archive,
+  Copy,
+  Edit,
+  FileBadge2,
+  MoreHorizontal,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 
 import { GlobalDataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
@@ -14,16 +22,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import {
-  formatMemoDateTime,
-  type MemoAnnouncementRecord,
-} from "./memo-announcements-data";
+import type { MemoAnnouncementRecord } from "@/features/memo-announcements/memo-announcement.types";
+import { formatMemoDateTime } from "./memo-announcements-data";
 
 type MemoAnnouncementsDataTableProps = {
   data: MemoAnnouncementRecord[];
   onView: (record: MemoAnnouncementRecord) => void;
   onEdit: (record: MemoAnnouncementRecord) => void;
   onCopyId: (record: MemoAnnouncementRecord) => void;
+  onArchive: (record: MemoAnnouncementRecord) => void;
+  onRestore: (record: MemoAnnouncementRecord) => void;
+  onDelete: (record: MemoAnnouncementRecord) => void;
+  isActionBusy: boolean;
 };
 
 const columns: ColumnDef<MemoAnnouncementRecord>[] = [
@@ -36,7 +46,9 @@ const columns: ColumnDef<MemoAnnouncementRecord>[] = [
       return (
         <div className="space-y-1">
           <p className="font-medium leading-none">{memo.title}</p>
-          <p className="text-muted-foreground text-xs">{memo.fileName}</p>
+          <p className="text-muted-foreground text-xs">
+            Ref. No. {memo.referenceNumber}
+          </p>
         </div>
       );
     },
@@ -47,29 +59,37 @@ const columns: ColumnDef<MemoAnnouncementRecord>[] = [
     cell: ({ row }) => <Badge variant="outline">{row.original.category}</Badge>,
   },
   {
-    id: "signatories",
-    header: "Signatories",
+    id: "recipients",
+    header: "Recipients",
     cell: ({ row }) => (
       <div className="space-y-1">
-        <p className="text-sm font-medium">{row.original.signatories[0]}</p>
+        <p className="text-sm font-medium">
+          {row.original.recipients[0]?.name ?? "No recipient"}
+        </p>
         <p className="text-muted-foreground text-xs">
-          {row.original.signatories.length === 1
-            ? "1 signatory"
-            : `${row.original.signatories.length} signatories`}
+          {row.original.recipients.length === 1
+            ? "1 recipient"
+            : `${row.original.recipients.length} recipients`}
         </p>
       </div>
     ),
   },
   {
-    accessorKey: "author",
-    header: "Issued By",
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => <Badge variant="outline">{row.original.status}</Badge>,
   },
   {
-    accessorKey: "issuedAt",
+    id: "author",
+    header: "Issued By",
+    cell: ({ row }) => row.original.author?.name ?? "Unknown",
+  },
+  {
+    accessorKey: "publishedAt",
     header: "Issued",
     cell: ({ row }) => (
       <span className="text-sm">
-        {formatMemoDateTime(row.original.issuedAt)}
+        {formatMemoDateTime(row.original.publishedAt ?? row.original.createdAt)}
       </span>
     ),
   },
@@ -89,6 +109,10 @@ export function MemoAnnouncementsDataTable({
   onView,
   onEdit,
   onCopyId,
+  onArchive,
+  onRestore,
+  onDelete,
+  isActionBusy,
 }: MemoAnnouncementsDataTableProps) {
   return (
     <GlobalDataTable
@@ -111,7 +135,7 @@ export function MemoAnnouncementsDataTable({
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => onCopyId(memo)}>
                 <Copy className="size-4" />
-                Copy ID
+                Copy Ref. No.
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onView(memo)}>
                 <FileBadge2 className="size-4" />
@@ -122,9 +146,31 @@ export function MemoAnnouncementsDataTable({
                 Edit memo
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive">
-                <Archive className="size-4" />
-                Archive
+              {memo.status === "ARCHIVED" ? (
+                <DropdownMenuItem
+                  disabled={isActionBusy}
+                  onClick={() => onRestore(memo)}
+                >
+                  <RotateCcw className="size-4" />
+                  Restore
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={isActionBusy}
+                  onClick={() => onArchive(memo)}
+                >
+                  <Archive className="size-4" />
+                  Archive
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={isActionBusy}
+                onClick={() => onDelete(memo)}
+              >
+                <Trash2 className="size-4" />
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

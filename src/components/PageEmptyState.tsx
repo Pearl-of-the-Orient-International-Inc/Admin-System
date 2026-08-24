@@ -12,6 +12,7 @@ type PageEmptyStateProps = {
   description: string;
   createUrl?: string;
   createLabel?: string;
+  createAction?: () => void;
   className?: string;
 };
 
@@ -20,6 +21,7 @@ export function PageEmptyState({
   description,
   createUrl,
   createLabel = "Create new",
+  createAction,
   className,
 }: PageEmptyStateProps) {
   return (
@@ -43,14 +45,19 @@ export function PageEmptyState({
         </p>
       </div>
 
-      {createUrl && createLabel && (
+      {createAction && createLabel ? (
+        <Button className="mt-6" onClick={createAction}>
+          <Plus className="size-4" />
+          {createLabel}
+        </Button>
+      ) : createUrl && createLabel ? (
         <Button asChild className="mt-6">
           <Link href={createUrl}>
             <Plus className="size-4" />
             {createLabel}
           </Link>
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

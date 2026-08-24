@@ -13,12 +13,25 @@ import {
   Rows3,
   Signature,
   Archive,
+  RotateCcw,
   Shapes,
+  Trash2,
 } from "lucide-react";
 
 import { PageEmptyState } from "@/components/PageEmptyState";
 import { PageErrorState } from "@/components/PageErrorState";
 import { PageLoadingState } from "@/components/PageLoadingState";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,27 +54,47 @@ import { useToast } from "@/hooks/use-toast";
 import {
   formatMemoDate,
   memoTemplateOptions,
-  memoAnnouncementRecords,
-  type MemoAnnouncementRecord,
   type MemoTemplateType,
 } from "./memo-announcements-data";
+import type { MemoAnnouncementRecord } from "@/features/memo-announcements/memo-announcement.types";
+import {
+  useArchiveMemoAnnouncementMutation,
+  useDeleteMemoAnnouncementMutation,
+  useMemoAnnouncementsQuery,
+  useRestoreMemoAnnouncementMutation,
+} from "@/features/memo-announcements/memo-announcement.hooks";
 import { MemoAnnouncementsDataTable } from "./memo-announcements-data-table";
 import { MemoTemplateDialog } from "./memo-template-dialog";
 
 type MemoViewMode = "grid" | "table";
 type MemoFilter = "ALL" | MemoTemplateType;
+type MemoRecordAction = {
+  type: "archive" | "restore" | "delete";
+  record: MemoAnnouncementRecord;
+};
 
 export function MemoAnnouncementsPageContent() {
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<MemoViewMode>("grid");
   const [filter, setFilter] = useState<MemoFilter>("ALL");
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [pendingRecordAction, setPendingRecordAction] =
+    useState<MemoRecordAction | null>(null);
+  const archiveMemoMutation = useArchiveMemoAnnouncementMutation();
+  const restoreMemoMutation = useRestoreMemoAnnouncementMutation();
+  const deleteMemoMutation = useDeleteMemoAnnouncementMutation();
+  const memosQuery = useMemoAnnouncementsQuery({
+    limit: 1000,
+    sortBy: "updatedAt",
+  });
 
-  const isLoading = false;
-  const isError = false;
-  const error = null as Error | null;
-
-  const records = useMemo(() => memoAnnouncementRecords, []);
+  const isLoading = memosQuery.isLoading;
+  const isError = memosQuery.isError;
+  const error = memosQuery.error;
+  const records = useMemo(
+    () => memosQuery.data?.items ?? [],
+    [memosQuery.data?.items],
+  );
   const hasNoRecords = !isLoading && !isError && records.length === 0;
 
   const filteredRecords = useMemo(() => {
@@ -84,12 +117,11 @@ export function MemoAnnouncementsPageContent() {
     [records],
   );
   const totalSignatories = useMemo(
-    () =>
-      records.reduce((count, record) => count + record.signatories.length, 0),
+    () => records.reduce((count, record) => count + record.recipients.length, 0),
     [records],
   );
   const latestIssuedLabel = records[0]
-    ? formatMemoDate(records[0].issuedAt)
+    ? formatMemoDate(records[0].publishedAt ?? records[0].createdAt)
     : "None";
 
   const handleView = (record: MemoAnnouncementRecord) => {
@@ -101,21 +133,102 @@ export function MemoAnnouncementsPageContent() {
   };
 
   const handleEdit = (record: MemoAnnouncementRecord) => {
-    toast({
-      variant: "info",
-      title: "Editor route not added yet",
-      description: `${record.title} can be connected to a create/update form next.`,
-    });
+    window.location.href = `/memo-editor/${record.id}`;
   };
 
   const handleCopyId = async (record: MemoAnnouncementRecord) => {
-    await navigator.clipboard.writeText(record.id);
+    await navigator.clipboard.writeText(record.referenceNumber);
     toast({
       variant: "success",
-      title: "Memo ID copied",
-      description: `${record.id} is now in your clipboard.`,
+      title: "Reference number copied",
+      description: `${record.referenceNumber} is now in your clipboard.`,
     });
   };
+
+  const handleArchive = async (record: MemoAnnouncementRecord) => {
+    try {
+      await archiveMemoMutation.mutateAsync(record.id);
+      toast({
+        variant: "success",
+        title: "Memo archived",
+        description: `${record.referenceNumber} has been archived.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Archive failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The memo could not be archived right now.",
+      });
+    }
+  };
+
+  const handleRestore = async (record: MemoAnnouncementRecord) => {
+    try {
+      await restoreMemoMutation.mutateAsync(record.id);
+      toast({
+        variant: "success",
+        title: "Memo restored",
+        description: `${record.referenceNumber} has been restored.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Restore failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The memo could not be restored right now.",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!pendingRecordAction) return;
+
+    const { record } = pendingRecordAction;
+
+    try {
+      await deleteMemoMutation.mutateAsync(record.id);
+      toast({
+        variant: "success",
+        title: "Memo deleted",
+        description: `${record.referenceNumber} has been permanently deleted.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Delete failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The memo could not be deleted right now.",
+      });
+    }
+  };
+
+  const handleConfirmRecordAction = async () => {
+    if (!pendingRecordAction) return;
+
+    const { type, record } = pendingRecordAction;
+
+    if (type === "archive") {
+      await handleArchive(record);
+    } else if (type === "restore") {
+      await handleRestore(record);
+    } else {
+      await handleDelete();
+    }
+
+    setPendingRecordAction(null);
+  };
+
+  const isRecordActionBusy =
+    archiveMemoMutation.isPending ||
+    restoreMemoMutation.isPending ||
+    deleteMemoMutation.isPending;
 
   return (
     <section className="space-y-6 p-10">
@@ -142,7 +255,7 @@ export function MemoAnnouncementsPageContent() {
         <PageEmptyState
           title="No memos or announcements found"
           description="Create the first memo or announcement to start distributing official documents across the organization."
-          createUrl="/memo-announcements/new"
+          createAction={() => setIsTemplateDialogOpen(true)}
           createLabel="Create memo"
         />
       ) : (
@@ -178,7 +291,7 @@ export function MemoAnnouncementsPageContent() {
                 tone="bg-amber-700/10 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300"
               />
               <SummaryCard
-                title="Signatories"
+                title="Recipients"
                 value={String(totalSignatories)}
                 subtitle={`Latest issued ${latestIssuedLabel}`}
                 icon={<Signature className="size-4" />}
@@ -266,6 +379,17 @@ export function MemoAnnouncementsPageContent() {
                   onView={handleView}
                   onEdit={handleEdit}
                   onCopyId={handleCopyId}
+                  onCreate={() => setIsTemplateDialogOpen(true)}
+                  onArchive={(record) =>
+                    setPendingRecordAction({ type: "archive", record })
+                  }
+                  onRestore={(record) =>
+                    setPendingRecordAction({ type: "restore", record })
+                  }
+                  onDelete={(record) =>
+                    setPendingRecordAction({ type: "delete", record })
+                  }
+                  isActionBusy={isRecordActionBusy}
                 />
               ) : (
                 <MemoAnnouncementsDataTable
@@ -273,6 +397,16 @@ export function MemoAnnouncementsPageContent() {
                   onView={handleView}
                   onEdit={handleEdit}
                   onCopyId={handleCopyId}
+                  onArchive={(record) =>
+                    setPendingRecordAction({ type: "archive", record })
+                  }
+                  onRestore={(record) =>
+                    setPendingRecordAction({ type: "restore", record })
+                  }
+                  onDelete={(record) =>
+                    setPendingRecordAction({ type: "delete", record })
+                  }
+                  isActionBusy={isRecordActionBusy}
                 />
               )}
             </CardContent>
@@ -284,6 +418,71 @@ export function MemoAnnouncementsPageContent() {
         open={isTemplateDialogOpen}
         onOpenChange={setIsTemplateDialogOpen}
       />
+
+      <AlertDialog
+        open={Boolean(pendingRecordAction)}
+        onOpenChange={(open) => {
+          if (!open) setPendingRecordAction(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia
+              className={
+                pendingRecordAction?.type === "restore"
+                  ? "bg-primary/10 text-primary"
+                  : "bg-destructive/10 text-destructive"
+              }
+            >
+              {pendingRecordAction?.type === "restore" ? (
+                <RotateCcw className="size-8" />
+              ) : pendingRecordAction?.type === "archive" ? (
+                <Archive className="size-8" />
+              ) : (
+                <Trash2 className="size-8" />
+              )}
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {pendingRecordAction?.type === "restore"
+                ? "Restore this memo?"
+                : pendingRecordAction?.type === "archive"
+                  ? "Archive this memo?"
+                  : "Delete this memo?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRecordAction?.type === "restore"
+                ? `${pendingRecordAction.record.referenceNumber} will be restored to the memo list.`
+                : pendingRecordAction?.type === "archive"
+                  ? `${pendingRecordAction.record.referenceNumber} will be moved to archived memos and can be restored later.`
+                  : pendingRecordAction
+                    ? `${pendingRecordAction.record.referenceNumber} will be permanently deleted. This cannot be restored.`
+                    : "Confirm this memo action."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRecordActionBusy}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant={
+                pendingRecordAction?.type === "restore"
+                  ? "default"
+                  : "destructive"
+              }
+              disabled={isRecordActionBusy}
+              onClick={() => void handleConfirmRecordAction()}
+            >
+              {isRecordActionBusy
+                ? "Processing..."
+                : pendingRecordAction?.type === "restore"
+                  ? "Restore"
+                  : pendingRecordAction?.type === "archive"
+                    ? "Archive"
+                    : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
@@ -293,18 +492,28 @@ function MemoAnnouncementsGridView({
   onView,
   onEdit,
   onCopyId,
+  onCreate,
+  onArchive,
+  onRestore,
+  onDelete,
+  isActionBusy,
 }: {
   data: MemoAnnouncementRecord[];
   onView: (record: MemoAnnouncementRecord) => void;
   onEdit: (record: MemoAnnouncementRecord) => void;
   onCopyId: (record: MemoAnnouncementRecord) => Promise<void>;
+  onCreate: () => void;
+  onArchive: (record: MemoAnnouncementRecord) => void;
+  onRestore: (record: MemoAnnouncementRecord) => void;
+  onDelete: (record: MemoAnnouncementRecord) => void;
+  isActionBusy: boolean;
 }) {
   if (!data.length) {
     return (
       <PageEmptyState
         title="No matching documents found"
         description="Try another filter or create a new memo or announcement to populate this view."
-        createUrl="/memo-announcements/new"
+        createAction={onCreate}
         createLabel="Create memo"
       />
     );
@@ -323,7 +532,7 @@ function MemoAnnouncementsGridView({
                 PDF
               </span>
               <p className="truncate text-base font-medium">
-                {record.fileName}
+                Ref. No. {record.referenceNumber}
               </p>
             </div>
 
@@ -352,9 +561,31 @@ function MemoAnnouncementsGridView({
                   Edit memo
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive">
-                  <Archive className="size-4" />
-                  Archive
+                {record.status === "ARCHIVED" ? (
+                  <DropdownMenuItem
+                    disabled={isActionBusy}
+                    onClick={() => onRestore(record)}
+                  >
+                    <RotateCcw className="size-4" />
+                    Restore
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={isActionBusy}
+                    onClick={() => onArchive(record)}
+                  >
+                    <Archive className="size-4" />
+                    Archive
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={isActionBusy}
+                  onClick={() => onDelete(record)}
+                >
+                  <Trash2 className="size-4" />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -365,14 +596,14 @@ function MemoAnnouncementsGridView({
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                    {record.category}
+                    {record.category} / {record.status}
                   </p>
                   <p className="line-clamp-2 text-sm font-semibold leading-snug">
-                    {record.title}
+                  {record.title}
                   </p>
                 </div>
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-full border bg-accent text-xs font-semibold">
-                  {record.pages}
+                  {record.recipients.length}
                 </div>
               </div>
 
@@ -384,10 +615,10 @@ function MemoAnnouncementsGridView({
               </div>
 
               <div className="flex items-center justify-between text-[11px]">
-                <span>{formatMemoDate(record.issuedAt)}</span>
+                <span>{formatMemoDate(record.publishedAt ?? record.createdAt)}</span>
                 <span>
-                  {record.signatories.length} signator
-                  {record.signatories.length === 1 ? "y" : "ies"}
+                  {record.recipients.length} recipient
+                  {record.recipients.length === 1 ? "" : "s"}
                 </span>
               </div>
             </div>

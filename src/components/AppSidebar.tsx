@@ -7,13 +7,11 @@ import {
   IconChartBar,
   IconClipboardList,
   IconDatabase,
-  IconHeartHandshake,
   IconLayoutDashboard,
   IconLogs,
   IconMessageCircle,
   IconNotebook,
   IconPhotoCheck,
-  IconPray,
   IconUserCog,
   IconUsersGroup,
   IconWallet,
@@ -122,26 +120,6 @@ const data = {
         {
           title: "Acknowledgement Receipts",
           url: "/accounting/acknowledgement-receipts",
-        },
-      ],
-    },
-    {
-      title: "Prayer Requests",
-      url: "/prayer-requests",
-      icon: IconPray,
-    },
-    {
-      title: "Pastoral Care",
-      url: "#",
-      icon: IconHeartHandshake,
-      subItems: [
-        {
-          title: "Visit Requests",
-          url: "/pastoral/visits",
-        },
-        {
-          title: "Counseling Sessions",
-          url: "/pastoral/counseling",
         },
       ],
     },
