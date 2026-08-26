@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  Archive,
-  ImageIcon,
-  Newspaper,
-  Plus,
-  Tag,
-} from "lucide-react";
+import { CalendarClock, ImageIcon, Newspaper, Plus, Tag } from "lucide-react";
 
 import { PageEmptyState } from "@/components/PageEmptyState";
 import { SummaryStatCard } from "@/components/SummaryStatCard";
@@ -47,8 +41,11 @@ export function NewsBlogsPageContent() {
         .length,
     [newsBlogRecords],
   );
-  const archivedPosts = useMemo(
-    () => newsBlogRecords.filter((post) => !post.isActive).length,
+  const scheduledPosts = useMemo(
+    () =>
+      newsBlogRecords.filter(
+        (post) => post.isActive && post.status === "SCHEDULED",
+      ).length,
     [newsBlogRecords],
   );
 
@@ -128,10 +125,10 @@ export function NewsBlogsPageContent() {
             accentClassName="bg-violet-700/10 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300"
           />
           <SummaryStatCard
-            label="Archived"
-            value={archivedPosts}
-            description="Stored posts that can still be retrieved"
-            icon={<Archive className="size-4" />}
+            label="Scheduled"
+            value={scheduledPosts}
+            description="Queued posts waiting for release"
+            icon={<CalendarClock className="size-4" />}
             accentClassName="bg-slate-700/10 text-slate-700 dark:bg-slate-300/10 dark:text-slate-300"
           />
         </CardContent>

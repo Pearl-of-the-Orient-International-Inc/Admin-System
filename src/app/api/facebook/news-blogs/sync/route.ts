@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-type SyncAction = "create" | "update" | "manual";
+type SyncAction = "create" | "update" | "manual" | "hide" | "delete";
 
 type SyncNewsBlogRequestBody = {
   action: SyncAction;
@@ -16,6 +16,7 @@ type SyncNewsBlogRequestBody = {
     }>;
     hashtags: string[];
     status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+    facebookPostId?: string | null;
     createdAt: string;
     updatedAt: string;
   };
@@ -62,7 +63,105 @@ export async function POST(request: Request) {
     );
   }
 
+  if (body.action === "delete") {
+    if (!body.newsBlog.facebookPostId) {
+      return NextResponse.json({
+        message: "No Facebook Page post is linked to this news/blog entry.",
+      });
+    }
+
+    const response = await deleteFacebookPost(body.newsBlog.facebookPostId);
+    const payload = (await response.json().catch(() => null)) as {
+      success?: boolean;
+      error?: {
+        message?: string;
+      };
+    } | null;
+
+    if (!response.ok || payload?.success === false) {
+      return NextResponse.json(
+        {
+          message:
+            payload?.error?.message ||
+            "Facebook rejected the Page post delete request.",
+        },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json({
+      message: "Facebook Page post deleted successfully.",
+      postId: body.newsBlog.facebookPostId,
+      mode: "deleted",
+    });
+  }
+
+  if (body.action === "hide") {
+    if (!body.newsBlog.facebookPostId) {
+      return NextResponse.json({
+        message: "No Facebook Page post is linked to this news/blog entry.",
+      });
+    }
+
+    const response = await hideFacebookPost(body.newsBlog.facebookPostId);
+    const payload = (await response.json().catch(() => null)) as {
+      success?: boolean;
+      error?: {
+        message?: string;
+      };
+    } | null;
+
+    if (!response.ok || payload?.success === false) {
+      return NextResponse.json(
+        {
+          message:
+            payload?.error?.message ||
+            "Facebook rejected the Page post visibility request.",
+        },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json({
+      message: "Facebook Page post hidden successfully.",
+      postId: body.newsBlog.facebookPostId,
+      mode: "hidden",
+    });
+  }
+
   const message = buildFacebookPostMessage(body.action, body.newsBlog);
+
+  if (body.newsBlog.facebookPostId) {
+    const response = await updateFacebookPost(
+      body.newsBlog.facebookPostId,
+      message,
+    );
+
+    const payload = (await response.json().catch(() => null)) as {
+      success?: boolean;
+      error?: {
+        message?: string;
+      };
+    } | null;
+
+    if (!response.ok || payload?.success === false) {
+      return NextResponse.json(
+        {
+          message:
+            payload?.error?.message ||
+            "Facebook rejected the Page post update request.",
+        },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json({
+      message: "Facebook Page post updated successfully.",
+      postId: body.newsBlog.facebookPostId,
+      mode: "updated",
+    });
+  }
+
   const imageMediaIds = await uploadImageMediaToFacebook(body.newsBlog.media);
   const params = new URLSearchParams({
     message,
@@ -85,21 +184,18 @@ export async function POST(request: Request) {
 
   const response = await postToFacebookFeed(params);
 
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        id?: string;
-        error?: {
-          message?: string;
-        };
-      }
-    | null;
+  const payload = (await response.json().catch(() => null)) as {
+    id?: string;
+    error?: {
+      message?: string;
+    };
+  } | null;
 
   if (!response.ok || !payload?.id) {
     return NextResponse.json(
       {
         message:
-          payload?.error?.message ||
-          "Facebook rejected the Page post request.",
+          payload?.error?.message || "Facebook rejected the Page post request.",
       },
       { status: 502 },
     );
@@ -108,6 +204,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     message: "Facebook Page post published successfully.",
     postId: payload.id,
+    mode: "created",
   });
 }
 
@@ -144,14 +241,12 @@ async function uploadImageMediaToFacebook(
       },
     );
 
-    const payload = (await response.json().catch(() => null)) as
-      | {
-          id?: string;
-          error?: {
-            message?: string;
-          };
-        }
-      | null;
+    const payload = (await response.json().catch(() => null)) as {
+      id?: string;
+      error?: {
+        message?: string;
+      };
+    } | null;
 
     if (!response.ok || !payload?.id) {
       throw new Error(
@@ -180,33 +275,78 @@ async function postToFacebookFeed(params: URLSearchParams) {
   );
 }
 
+async function updateFacebookPost(postId: string, message: string) {
+  const params = new URLSearchParams({
+    message,
+    is_hidden: "false",
+    access_token: FACEBOOK_PAGE_ACCESS_TOKEN!,
+  });
+
+  return fetch(
+    `https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${encodeURIComponent(postId)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+      cache: "no-store",
+    },
+  );
+}
+
+async function hideFacebookPost(postId: string) {
+  const params = new URLSearchParams({
+    is_hidden: "true",
+    access_token: FACEBOOK_PAGE_ACCESS_TOKEN!,
+  });
+
+  return fetch(
+    `https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${encodeURIComponent(postId)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+      cache: "no-store",
+    },
+  );
+}
+
+async function deleteFacebookPost(postId: string) {
+  const params = new URLSearchParams({
+    access_token: FACEBOOK_PAGE_ACCESS_TOKEN!,
+  });
+
+  return fetch(
+    `https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${encodeURIComponent(postId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+      cache: "no-store",
+    },
+  );
+}
+
 function buildFacebookPostMessage(
-  action: SyncAction,
+  _action: SyncAction,
   newsBlog: SyncNewsBlogRequestBody["newsBlog"],
 ) {
-  const plainCaption = toPlainText(newsBlog.caption);
-  const preface = getTemplatePreface(action);
-  const hashtags = newsBlog.hashtags.length ? `\n\n${newsBlog.hashtags.join(" ")}` : "";
-
-  return [
-    "📣 OFFICIAL ANNOUNCEMENT",
-    "",
-    newsBlog.title.trim(),
-    "",
-    preface,
-    "",
-    plainCaption,
-    hashtags ? `${hashtags}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return toPlainText(newsBlog.caption);
 }
 
 function toPlainText(value: string) {
   return decodeHtmlEntities(
     value
       .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/(p|div|section|article|blockquote|h1|h2|h3|h4|h5|h6)>/gi, "\n\n")
+      .replace(
+        /<\/(p|div|section|article|blockquote|h1|h2|h3|h4|h5|h6)>/gi,
+        "\n\n",
+      )
       .replace(/<\/li>/gi, "\n")
       .replace(/<li[^>]*>/gi, "• ")
       .replace(/<\/(ul|ol)>/gi, "\n")
@@ -238,16 +378,4 @@ function buildPublicPostUrl(newsBlogId: string) {
   }
 
   return `${trimmedBaseUrl.replace(/\/$/, "")}/${encodeURIComponent(newsBlogId)}`;
-}
-
-function getTemplatePreface(action: SyncAction) {
-  if (action === "create") {
-    return "We are pleased to share a new update from Pearl of the Orient International Auxiliary Chaplain Values Educators Inc.";
-  }
-
-  if (action === "update") {
-    return "We are sharing an updated news post from Pearl of the Orient International Auxiliary Chaplain Values Educators Inc.";
-  }
-
-  return "We are pleased to feature this selected news post from Pearl of the Orient International Auxiliary Chaplain Values Educators Inc.";
 }

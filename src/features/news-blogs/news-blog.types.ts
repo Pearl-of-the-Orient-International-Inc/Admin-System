@@ -20,6 +20,7 @@ export type NewsBlogRecord = {
   isActive: boolean;
   status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
   platform: "FACEBOOK";
+  facebookPostId: string | null;
   media: NewsBlogMediaItem[];
   taggedMembers: NewsBlogTaggedMember[];
   hashtags: string[];
@@ -48,6 +49,7 @@ export interface NewsBlogListResponse {
     isActive: boolean;
     status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
     platform: "FACEBOOK";
+    facebookPostId: string | null;
     hashtags: string[];
     scheduledAt: string | null;
     publishedAt: string | null;
@@ -111,6 +113,7 @@ export interface CreateNewsBlogRequest {
   }>;
   taggedMemberIds?: string[];
   hashtags: string[];
+  facebookPostId?: string | null;
   scheduledAt?: string | null;
   publishedAt?: string | null;
 }

@@ -3,21 +3,22 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  Archive,
+  FilePenLine,
   Copy,
   Eye,
   Globe,
+  AlertTriangle,
   LoaderCircle,
   MoreHorizontal,
   Rocket,
   SquarePen,
-  Undo2,
+  Trash2,
 } from "lucide-react";
 
 import {
-  useArchiveNewsBlogMutation,
+  useDeleteNewsBlogMutation,
   usePublishNewsBlogMutation,
-  useRetrieveNewsBlogMutation,
+  useUpdateNewsBlogMutation,
 } from "@/features/news-blogs/news-blog.hooks";
 import { syncNewsBlogToFacebook } from "@/features/news-blogs/news-blog.api";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +30,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,10 +61,11 @@ export function NewsBlogsActionsMenu({
 }) {
   const { toast } = useToast();
   const publishNewsBlogMutation = usePublishNewsBlogMutation();
-  const archiveNewsBlogMutation = useArchiveNewsBlogMutation();
-  const retrieveNewsBlogMutation = useRetrieveNewsBlogMutation();
+  const deleteNewsBlogMutation = useDeleteNewsBlogMutation();
+  const updateNewsBlogMutation = useUpdateNewsBlogMutation();
   const [isSyncingToFacebook, setIsSyncingToFacebook] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleCopyLink = async () => {
     try {
@@ -74,48 +87,111 @@ export function NewsBlogsActionsMenu({
 
   const handlePublish = async () => {
     try {
-      await publishNewsBlogMutation.mutateAsync(post.id);
+      const publishedPost = await publishNewsBlogMutation.mutateAsync(post.id);
+
+      if (publishedPost.facebookPostId) {
+        await syncNewsBlogToFacebook({
+          action: "update",
+          newsBlog: publishedPost,
+        });
+      }
+
       toast({
         title: "Post published",
-        description: "The news/blog post is now marked as published.",
+        description:
+          "The news/blog post is now published and visible on Facebook.",
         variant: "success",
       });
     } catch (error) {
       toast({
         title: "Publish failed",
-        description: toApiError(error).message ?? "Unable to publish the post right now.",
+        description:
+          toApiError(error).message ?? "Unable to publish the post right now.",
         variant: "error",
       });
     }
   };
 
-  const handleArchiveToggle = async () => {
+  const handleMoveToDraft = async () => {
+    if (isSyncingToFacebook) return;
+
+    setIsMenuOpen(false);
+    setIsSyncingToFacebook(true);
+
     try {
-      if (post.isActive) {
-        await archiveNewsBlogMutation.mutateAsync(post.id);
-        toast({
-          title: "Post archived",
-          description: "The news/blog post was archived successfully.",
-          variant: "success",
-        });
-      } else {
-        await retrieveNewsBlogMutation.mutateAsync(post.id);
-        toast({
-          title: "Post retrieved",
-          description: "The news/blog post was restored successfully.",
-          variant: "success",
+      if (post.facebookPostId) {
+        await syncNewsBlogToFacebook({
+          action: "hide",
+          newsBlog: post,
         });
       }
+
+      await updateNewsBlogMutation.mutateAsync({
+        id: post.id,
+        payload: buildNewsBlogUpdatePayload(post, {
+          status: "DRAFT",
+          scheduledAt: null,
+          publishedAt: null,
+        }),
+      });
+
+      toast({
+        title: "Moved to draft",
+        description: post.facebookPostId
+          ? "The news/blog post is now draft and the linked Facebook Page post was hidden."
+          : "The news/blog post is now draft.",
+        variant: "success",
+      });
     } catch (error) {
       toast({
-        title: post.isActive ? "Archive failed" : "Retrieve failed",
+        title: "Draft failed",
         description:
-          toApiError(error).message ??
-          (post.isActive
-            ? "Unable to archive the post right now."
-            : "Unable to retrieve the post right now."),
+          error instanceof Error
+            ? error.message
+            : "Unable to move this post to draft right now.",
         variant: "error",
       });
+    } finally {
+      setIsSyncingToFacebook(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isSyncingToFacebook) return;
+
+    setIsSyncingToFacebook(true);
+
+    try {
+      if (post.facebookPostId) {
+        await syncNewsBlogToFacebook({
+          action: "delete",
+          newsBlog: post,
+        });
+      }
+
+      await deleteNewsBlogMutation.mutateAsync(post.id);
+
+      toast({
+        title: "Post deleted",
+        description: post.facebookPostId
+          ? "The news/blog post and linked Facebook Page post were deleted."
+          : "The news/blog post was deleted.",
+        variant: "success",
+      });
+
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : toApiError(error).message ||
+              "Unable to delete this post right now.",
+        variant: "error",
+      });
+    } finally {
+      setIsSyncingToFacebook(false);
     }
   };
 
@@ -126,15 +202,26 @@ export function NewsBlogsActionsMenu({
     setIsSyncingToFacebook(true);
 
     try {
-      await syncNewsBlogToFacebook({
+      const facebookSync = await syncNewsBlogToFacebook({
         action: "manual",
         newsBlog: post,
       });
 
+      if (facebookSync?.postId && facebookSync.postId !== post.facebookPostId) {
+        await updateNewsBlogMutation.mutateAsync({
+          id: post.id,
+          payload: buildNewsBlogUpdatePayload(post, {
+            facebookPostId: facebookSync.postId,
+          }),
+        });
+      }
+
       toast({
         title: "Synced to Facebook",
         description:
-          "The selected news/blog post was published to the Facebook Page with the announcement template.",
+          facebookSync?.mode === "updated"
+            ? "The selected news/blog post updated the existing Facebook Page post."
+            : "The selected news/blog post was published to the Facebook Page.",
         variant: "success",
       });
     } catch (error) {
@@ -188,6 +275,15 @@ export function NewsBlogsActionsMenu({
               Publish post
             </DropdownMenuItem>
           ) : null}
+          {post.isActive && post.status !== "DRAFT" ? (
+            <DropdownMenuItem
+              onClick={handleMoveToDraft}
+              disabled={isSyncingToFacebook}
+            >
+              <FilePenLine className="size-4" />
+              Move to draft
+            </DropdownMenuItem>
+          ) : null}
           {post.isActive ? (
             <DropdownMenuItem
               onClick={handleSyncToFacebook}
@@ -199,18 +295,54 @@ export function NewsBlogsActionsMenu({
           ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            variant={post.isActive ? "destructive" : "default"}
-            onClick={handleArchiveToggle}
+            variant="destructive"
+            onClick={() => {
+              setIsMenuOpen(false);
+              setIsDeleteDialogOpen(true);
+            }}
           >
-            {post.isActive ? (
-              <Archive className="size-4" />
-            ) : (
-              <Undo2 className="size-4" />
-            )}
-            {post.isActive ? "Archive" : "Retrieve"}
+            <Trash2 className="size-4" />
+            Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive">
+              <AlertTriangle className="size-8" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete news/blog post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the news/blog entry
+              {post.facebookPostId
+                ? " and its linked Facebook Page post."
+                : "."}{" "}
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSyncingToFacebook}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDelete();
+              }}
+              disabled={isSyncingToFacebook}
+            >
+              <Trash2 className="size-4" />
+              {isSyncingToFacebook ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isSyncingToFacebook}>
         <DialogContent
@@ -228,14 +360,52 @@ export function NewsBlogsActionsMenu({
               <LoaderCircle className="size-6 animate-spin" />
               <span className="sr-only">Syncing to Facebook</span>
             </div>
-            <DialogTitle>Syncing to Facebook</DialogTitle>
+            <DialogTitle>Updating Facebook</DialogTitle>
             <DialogDescription className="text-center">
-              Publishing this news/blog post to the Facebook Page. Keep this
-              window open until sync finishes.
+              Applying the requested change to the Facebook Page. Keep this
+              window open until it finishes.
             </DialogDescription>
           </DialogHeader>
         </DialogContent>
       </Dialog>
     </>
   );
+}
+
+type NewsBlogUpdatePayloadOverrides = Partial<{
+  status: NewsBlogRecord["status"];
+  scheduledAt: string | null;
+  publishedAt: string | null;
+  facebookPostId: string | null;
+}>;
+
+function buildNewsBlogUpdatePayload(
+  post: NewsBlogRecord,
+  overrides: NewsBlogUpdatePayloadOverrides = {},
+) {
+  const hasOverride = (key: keyof NewsBlogUpdatePayloadOverrides) =>
+    Object.prototype.hasOwnProperty.call(overrides, key);
+
+  return {
+    title: post.title,
+    caption: post.caption,
+    media: post.media.map((item) => ({
+      kind: item.kind === "image" ? ("IMAGE" as const) : ("VIDEO" as const),
+      fileUrl: item.previewUrl,
+      fileName: item.fileName,
+    })),
+    taggedMemberIds: post.taggedMembers.map((member) => member.id),
+    hashtags: post.hashtags,
+    facebookPostId: hasOverride("facebookPostId")
+      ? overrides.facebookPostId
+      : post.facebookPostId,
+    platform: "FACEBOOK" as const,
+    status: hasOverride("status") ? overrides.status : post.status,
+    scheduledAt: hasOverride("scheduledAt")
+      ? overrides.scheduledAt
+      : post.scheduledAt,
+    publishedAt: hasOverride("publishedAt")
+      ? overrides.publishedAt
+      : post.publishedAt,
+  };
 }

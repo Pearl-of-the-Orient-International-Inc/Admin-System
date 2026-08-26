@@ -18,6 +18,7 @@ function mapNewsBlogRecord(
     isActive: resource.isActive,
     status: resource.status,
     platform: resource.platform,
+    facebookPostId: resource.facebookPostId,
     media: resource.media.map((item) => ({
       id: item.id,
       kind: item.kind === "IMAGE" ? "image" : "video",
@@ -39,11 +40,14 @@ function mapNewsBlogRecord(
   };
 }
 
+type FacebookNewsBlogAction =
+  "create" | "update" | "manual" | "hide" | "delete";
+
 export async function syncNewsBlogToFacebook({
   action,
   newsBlog,
 }: {
-  action: "create" | "update" | "manual";
+  action: FacebookNewsBlogAction;
   newsBlog: NewsBlogRecord;
 }) {
   const response = await fetch("/api/facebook/news-blogs/sync", {
@@ -57,9 +61,11 @@ export async function syncNewsBlogToFacebook({
     }),
   });
 
-  const payload = (await response.json().catch(() => null)) as
-    | { message?: string; postId?: string }
-    | null;
+  const payload = (await response.json().catch(() => null)) as {
+    message?: string;
+    postId?: string;
+    mode?: "created" | "updated" | "hidden" | "deleted";
+  } | null;
 
   if (!response.ok) {
     throw new Error(

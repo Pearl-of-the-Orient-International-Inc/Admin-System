@@ -107,7 +107,10 @@ export function NewsBlogForm({
   const router = useRouter();
   const { toast } = useToast();
   const { data: currentUser } = useCurrentUserQuery();
-  const newsBlogQuery = useNewsBlogByIdQuery(newsBlogId ?? "", mode === "update");
+  const newsBlogQuery = useNewsBlogByIdQuery(
+    newsBlogId ?? "",
+    mode === "update",
+  );
   const membersQuery = useMembersQuery({
     limit: 100,
     status: MemberStatus.APPROVED,
@@ -185,7 +188,9 @@ export function NewsBlogForm({
       })),
     );
     setHashtags(resolvedInitialPost.hashtags);
-    setSelectedMemberIds(resolvedInitialPost.taggedMembers.map((member) => member.id));
+    setSelectedMemberIds(
+      resolvedInitialPost.taggedMembers.map((member) => member.id),
+    );
   }, [resolvedInitialPost]);
 
   if (mode === "update" && !resolvedInitialPost && !newsBlogQuery.isLoading) {
@@ -285,16 +290,18 @@ export function NewsBlogForm({
         media: mediaItems.map((item) => ({
           kind: item.kind === "image" ? ("IMAGE" as const) : ("VIDEO" as const),
           fileUrl: item.file
-            ? uploadedMediaUrls[uploadedMediaIndex++] ?? item.previewUrl
+            ? (uploadedMediaUrls[uploadedMediaIndex++] ?? item.previewUrl)
             : item.previewUrl,
           fileName: item.fileName,
         })),
         taggedMemberIds: selectedMemberIds,
         hashtags,
+        facebookPostId: resolvedInitialPost?.facebookPostId ?? null,
         platform: "FACEBOOK" as const,
-        status: "DRAFT" as const,
+        status: "PUBLISHED" as const,
         scheduledAt: null,
-        publishedAt: null,
+        publishedAt:
+          resolvedInitialPost?.publishedAt ?? new Date().toISOString(),
       };
 
       let savedNewsBlog: NewsBlogRecord;
@@ -314,10 +321,23 @@ export function NewsBlogForm({
 
       if (shouldSyncToFacebook) {
         try {
-          await syncNewsBlogToFacebook({
+          const facebookSync = await syncNewsBlogToFacebook({
             action: mode,
             newsBlog: savedNewsBlog,
           });
+
+          if (
+            facebookSync?.postId &&
+            facebookSync.postId !== savedNewsBlog.facebookPostId
+          ) {
+            await updateNewsBlogMutation.mutateAsync({
+              id: savedNewsBlog.id,
+              payload: {
+                ...payload,
+                facebookPostId: facebookSync.postId,
+              },
+            });
+          }
         } catch (error) {
           facebookSyncError =
             error instanceof Error
@@ -878,8 +898,8 @@ export function NewsBlogForm({
                       Auto-post this save to the Facebook Page
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Create and update actions publish a new Facebook Page feed
-                      post. This does not overwrite an older Facebook post.
+                      Creates a Facebook Page feed post the first time, then
+                      updates that same Facebook post on later saves.
                     </p>
                   </div>
                   <Switch
@@ -1191,7 +1211,10 @@ export function NewsBlogForm({
                   Cancel
                 </Link>
               </Button>
-              <Button onClick={handleSubmit} disabled={isInvalid || isSubmitting}>
+              <Button
+                onClick={handleSubmit}
+                disabled={isInvalid || isSubmitting}
+              >
                 <Save className="size-4" />
                 {isSubmitting
                   ? "Saving..."
