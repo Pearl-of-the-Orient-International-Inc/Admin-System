@@ -204,6 +204,23 @@ const getTimezoneOffsetLabel = () => {
   return `GMT${sign}${String(Math.floor(absolute / 60)).padStart(2, "0")}:${String(absolute % 60).padStart(2, "0")}`;
 };
 
+const eventErrorFieldLabels: Record<string, string> = {
+  startsAt: "Start schedule",
+  endsAt: "End schedule",
+};
+
+const getEventApiErrorMessage = (error: unknown) => {
+  const apiError = toApiError(error);
+  const issueMessage = apiError.errors
+    ?.map((issue) => {
+      const label = eventErrorFieldLabels[issue.path] ?? issue.path;
+      return label ? `${label}: ${issue.message}` : issue.message;
+    })
+    .join(", ");
+
+  return issueMessage || apiError.message || "Unable to process the event form right now.";
+};
+
 export function EventForm({ mode, eventId }: EventFormProps) {
   return <EventFormEditor mode={mode} eventId={eventId} />;
 }
@@ -291,30 +308,25 @@ function EventFormEditor({
     effectiveMeetingPlatform === EventMeetingPlatform.ZOOM ||
     effectiveMeetingPlatform === EventMeetingPlatform.GOOGLE_MEET ||
     effectiveMeetingPlatform === EventMeetingPlatform.MICROSOFT_TEAMS;
-
-  const isInvalid = useMemo(() => {
-    if (
-      !form.name.trim() ||
-      !form.description.trim() ||
-      !form.thumbnailUrl.trim() ||
-      !form.organizer.trim()
-    ) {
-      return true;
+  const scheduleError = useMemo(() => {
+    if (!form.startsAt && !form.endsAt) return "";
+    if (!form.startsAt || !form.endsAt) {
+      return "Start and end schedule are required.";
     }
 
-    if (
-      !form.startsAt ||
-      !form.endsAt ||
-      new Date(form.endsAt) <= new Date(form.startsAt)
-    ) {
-      return true;
+    const startsAt = new Date(form.startsAt);
+    const endsAt = new Date(form.endsAt);
+
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+      return "Enter a valid start and end schedule.";
     }
 
-    if (form.type === EventType.ONLINE && !form.onlineLink.trim()) return true;
-    if (form.type === EventType.ONSITE && !form.location.trim()) return true;
+    if (endsAt <= startsAt) {
+      return "End schedule must be after the start schedule.";
+    }
 
-    return false;
-  }, [form]);
+    return "";
+  }, [form.endsAt, form.startsAt]);
 
   const setField = <K extends keyof EventFormState>(
     key: K,
@@ -400,6 +412,15 @@ function EventFormEditor({
     submitEvent.preventDefault();
 
     try {
+      if (scheduleError) {
+        toast({
+          title: "Invalid schedule",
+          description: scheduleError,
+          variant: "error",
+        });
+        return;
+      }
+
       const payload = {
         ...buildEventPayload(form),
         taggedMemberIds: selectedTaggedMemberIds,
@@ -426,9 +447,7 @@ function EventFormEditor({
     } catch (error) {
       toast({
         title: mode === "create" ? "Create failed" : "Update failed",
-        description:
-          toApiError(error).message ||
-          "Unable to process the event form right now.",
+        description: getEventApiErrorMessage(error),
         variant: "error",
       });
     }
@@ -671,6 +690,11 @@ function EventFormEditor({
                         onChange={(e) => setField("endsAt", e.target.value)}
                         className={cn(fieldClass, "h-10 rounded-lg")}
                       />
+                      {scheduleError ? (
+                        <p className="text-sm font-medium text-destructive">
+                          {scheduleError}
+                        </p>
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>

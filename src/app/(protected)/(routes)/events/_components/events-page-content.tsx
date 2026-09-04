@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   CalendarCheck2,
   Clock3,
   ListChecks,
@@ -16,6 +17,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EventStatus } from "@/enums";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +69,8 @@ export function EventsPageContent() {
   const hasNoEvents = !isLoading && !isError && events.length === 0;
   const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [deleteTargetEvent, setDeleteTargetEvent] =
+    useState<EventRecord | null>(null);
 
   const totalEvents = events.length;
   const scheduledEvents = useMemo(
@@ -114,6 +128,35 @@ export function EventsPageContent() {
         description: "Unable to delete the selected events right now.",
         variant: "error",
       });
+    }
+  };
+
+  const requestDeleteEvent = (event: EventRecord) => {
+    setDeleteTargetEvent(event);
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!deleteTargetEvent) return;
+
+    try {
+      await deleteEventMutation.mutateAsync(deleteTargetEvent.id);
+      if (selectedEvent?.id === deleteTargetEvent.id) {
+        setSelectedEvent(null);
+        setIsDetailsOpen(false);
+      }
+      toast({
+        title: "Event deleted",
+        description: `${deleteTargetEvent.name} was removed successfully.`,
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: "Delete failed",
+        description: "Unable to delete this event right now.",
+        variant: "error",
+      });
+    } finally {
+      setDeleteTargetEvent(null);
     }
   };
 
@@ -260,6 +303,7 @@ export function EventsPageContent() {
                       onDeleteEvents={handleDeleteEvents}
                       onViewEvent={handleViewEvent}
                       onCancelEvent={handleCancelEvent}
+                      onDeleteEvent={requestDeleteEvent}
                     />
                   )}
                 </CardContent>
@@ -308,6 +352,41 @@ export function EventsPageContent() {
         onOpenChange={setIsDetailsOpen}
         onCancelEvent={handleCancelEvent}
       />
+
+      <AlertDialog
+        open={Boolean(deleteTargetEvent)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetEvent(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+              <AlertTriangle />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete this event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {deleteTargetEvent?.name ?? "this event"}.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setDeleteTargetEvent(null)}
+              disabled={deleteEventMutation.isPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => void handleDeleteEvent()}
+              disabled={deleteEventMutation.isPending}
+            >
+              Delete event
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

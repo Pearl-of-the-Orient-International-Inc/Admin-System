@@ -21,6 +21,7 @@ type EventsDataTableProps = {
   onDeleteEvents: (eventIds: string[]) => void;
   onViewEvent: (event: EventRecord) => void;
   onCancelEvent: (event: EventRecord) => void;
+  onDeleteEvent: (event: EventRecord) => void;
 };
 
 export function EventsDataTable({
@@ -28,6 +29,7 @@ export function EventsDataTable({
   onDeleteEvents,
   onViewEvent,
   onCancelEvent,
+  onDeleteEvent,
 }: EventsDataTableProps) {
   const columns = useMemo<ColumnDef<EventRecord>[]>(
     () => [
@@ -124,6 +126,7 @@ export function EventsDataTable({
           event={row.original}
           onViewEvent={onViewEvent}
           onCancelEvent={onCancelEvent}
+          onDeleteEvent={onDeleteEvent}
         />
       )}
     />

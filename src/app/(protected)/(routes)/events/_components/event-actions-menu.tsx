@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MoreHorizontal, SquarePen, Ban, Copy, Eye } from "lucide-react";
+import { MoreHorizontal, SquarePen, Ban, Copy, Eye, Trash2 } from "lucide-react";
 
 import { EventStatus } from "@/enums";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ type EventActionsMenuProps = {
   event: EventRecord;
   onViewEvent?: (event: EventRecord) => void;
   onCancelEvent?: (event: EventRecord) => void;
+  onDeleteEvent?: (event: EventRecord) => void;
   align?: "start" | "center" | "end";
 };
 
@@ -27,6 +28,7 @@ export function EventActionsMenu({
   event,
   onViewEvent,
   onCancelEvent,
+  onDeleteEvent,
   align = "end",
 }: EventActionsMenuProps) {
   const { toast } = useToast();
@@ -77,6 +79,14 @@ export function EventActionsMenu({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => onDeleteEvent?.(event)}
+          disabled={!onDeleteEvent}
+          variant="destructive"
+        >
+          <Trash2 className="size-4" />
+          Delete event
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => onCancelEvent?.(event)}
           disabled={isCancelled || !onCancelEvent}
