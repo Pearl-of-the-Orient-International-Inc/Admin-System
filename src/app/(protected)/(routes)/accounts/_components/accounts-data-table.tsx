@@ -8,6 +8,7 @@ import {
   Activity,
   Archive,
   ArrowDownUp,
+  BadgeCheck,
   Copy,
   Edit,
   LoaderCircle,
@@ -48,6 +49,7 @@ type AccountsDataTableProps = {
   data: AccountRecord[];
   changingPasswordAccountId?: string | null;
   resendingVerificationAccountId?: string | null;
+  verifyingEmailAccountId?: string | null;
   onArchiveAccount: (accountId: string) => void;
   onRetrieveAccount: (accountId: string) => void;
   onChangeAccountPassword?: (
@@ -58,16 +60,19 @@ type AccountsDataTableProps = {
   onResendAccountEmailVerification?: (
     account: AccountRecord,
   ) => Promise<void>;
+  onVerifyAccountEmail?: (account: AccountRecord) => Promise<void>;
 };
 
 export function AccountsDataTable({
   data,
   changingPasswordAccountId = null,
   resendingVerificationAccountId = null,
+  verifyingEmailAccountId = null,
   onArchiveAccount,
   onRetrieveAccount,
   onChangeAccountPassword,
   onResendAccountEmailVerification,
+  onVerifyAccountEmail,
 }: AccountsDataTableProps) {
   const { toast } = useToast();
   const { data: currentUser, isLoading: isCurrentUserLoading } =
@@ -86,6 +91,7 @@ export function AccountsDataTable({
     canUseItActions && Boolean(onChangeAccountPassword);
   const canResendVerification =
     canUseItActions && Boolean(onResendAccountEmailVerification);
+  const canVerifyEmail = canUseItActions && Boolean(onVerifyAccountEmail);
   const isPasswordChangePending =
     Boolean(passwordDialogAccount) &&
     changingPasswordAccountId === passwordDialogAccount?.id;
@@ -287,6 +293,29 @@ export function AccountsDataTable({
                   : resendingVerificationAccountId === row.original.id
                     ? "Sending..."
                     : "Resend verification"}
+              </DropdownMenuItem>
+            ) : null}
+            {canVerifyEmail ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!onVerifyAccountEmail) return;
+                  void onVerifyAccountEmail(row.original);
+                }}
+                disabled={
+                  row.original.isEmailVerified ||
+                  verifyingEmailAccountId === row.original.id
+                }
+              >
+                {verifyingEmailAccountId === row.original.id ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <BadgeCheck className="size-4" />
+                )}
+                {row.original.isEmailVerified
+                  ? "Email verified"
+                  : verifyingEmailAccountId === row.original.id
+                    ? "Verifying..."
+                    : "Verify email"}
               </DropdownMenuItem>
             ) : null}
             <DropdownMenuSeparator />

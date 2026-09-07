@@ -67,3 +67,18 @@ export const useResendAccountEmailVerificationMutation = () =>
     mutationFn: accountApi.resendAccountEmailVerification,
     meta: { feature: "accounts.resendEmailVerification" },
   });
+
+export const useVerifyAccountEmailMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: accountApi.verifyAccountEmail,
+    onSuccess: async (_data, userId) => {
+      await queryClient.invalidateQueries({ queryKey: ["accounts", "list"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["accounts", "detail", userId],
+      });
+    },
+    meta: { feature: "accounts.verifyEmail" },
+  });
+};

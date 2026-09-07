@@ -26,6 +26,7 @@ import {
   useChangeAccountPasswordMutation,
   useResendAccountEmailVerificationMutation,
   useUpdateAccountMutation,
+  useVerifyAccountEmailMutation,
 } from "@/features/accounts/account.hooks";
 import { type AccountRecord } from "./accounts-data";
 import { AccountsDataTable } from "./accounts-data-table";
@@ -43,6 +44,7 @@ export function AccountsPageContent() {
   const changeAccountPasswordMutation = useChangeAccountPasswordMutation();
   const resendAccountEmailVerificationMutation =
     useResendAccountEmailVerificationMutation();
+  const verifyAccountEmailMutation = useVerifyAccountEmailMutation();
 
   const accounts = useMemo<AccountRecord[]>(
     () =>
@@ -194,6 +196,24 @@ export function AccountsPageContent() {
     }
   };
 
+  const handleVerifyAccountEmail = async (account: AccountRecord) => {
+    try {
+      await verifyAccountEmailMutation.mutateAsync(account.id);
+      toast({
+        title: "Email verified",
+        description: `${account.email} is now marked as verified.`,
+        variant: "success",
+      });
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        title: "Verification failed",
+        description: apiError.message ?? "Unable to verify account email.",
+        variant: "error",
+      });
+    }
+  };
+
   return (
     <section className="space-y-6 p-10">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -304,12 +324,18 @@ export function AccountsPageContent() {
                       ? resendAccountEmailVerificationMutation.variables ?? null
                       : null
                   }
+                  verifyingEmailAccountId={
+                    verifyAccountEmailMutation.isPending
+                      ? verifyAccountEmailMutation.variables ?? null
+                      : null
+                  }
                   onArchiveAccount={handleArchiveAccount}
                   onRetrieveAccount={handleRetrieveAccount}
                   onChangeAccountPassword={handleChangeAccountPassword}
                   onResendAccountEmailVerification={
                     handleResendAccountEmailVerification
                   }
+                  onVerifyAccountEmail={handleVerifyAccountEmail}
                 />
               )}
             </CardContent>

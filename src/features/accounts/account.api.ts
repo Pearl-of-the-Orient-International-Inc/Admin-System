@@ -59,3 +59,7 @@ export async function resendAccountEmailVerification(userId: string) {
     `/users/${encodeURIComponent(userId)}/resend-email-verification`,
   );
 }
+
+export async function verifyAccountEmail(userId: string) {
+  await api.patch(`/users/${encodeURIComponent(userId)}/verify-email`);
+}
