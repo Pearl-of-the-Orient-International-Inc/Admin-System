@@ -19,7 +19,9 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   customMemoTemplateSuggestions,
+  generalOfficeTemplateOptions,
   memoTemplateOptions,
+  type GeneralOfficeTemplateVariant,
   type MemoTemplateType,
 } from "./memo-announcements-data";
 
@@ -36,6 +38,8 @@ export function MemoTemplateDialog({
   const [selectedTemplate, setSelectedTemplate] =
     useState<MemoTemplateType>("ANNOUNCEMENT");
   const [customTemplateName, setCustomTemplateName] = useState("");
+  const [generalOfficeTemplate, setGeneralOfficeTemplate] =
+    useState<GeneralOfficeTemplateVariant>("OFFICE_MEMORANDUM");
 
   const requiresCustomTemplate = selectedTemplate === "BLANK";
   const normalizedCustomTemplateName = customTemplateName.trim();
@@ -58,6 +62,10 @@ export function MemoTemplateDialog({
     const searchParams = new URLSearchParams({
       type: selectedTemplate,
     });
+
+    if (selectedTemplate === "GENERAL_OFFICE") {
+      searchParams.set("variant", generalOfficeTemplate);
+    }
 
     if (requiresCustomTemplate && normalizedCustomTemplateName) {
       searchParams.set("type", normalizedCustomTemplateName);
@@ -128,7 +136,48 @@ export function MemoTemplateDialog({
             })}
           </div>
 
-          {requiresCustomTemplate ? (
+          {selectedTemplate === "GENERAL_OFFICE" ? (
+            <div className="space-y-3 rounded-2xl border bg-accent/20 p-4">
+              <div>
+                <p className="text-sm font-medium">
+                  Choose a General Office document
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Select the office memorandum or one of the formal letter
+                  templates.
+                </p>
+              </div>
+              <div className="grid gap-2 md:grid-cols-3">
+                {generalOfficeTemplateOptions.map((option) => {
+                  const isSelected = option.value === generalOfficeTemplate;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setGeneralOfficeTemplate(option.value)}
+                      className={cn(
+                        "relative rounded-xl border bg-background p-3 text-left transition-colors hover:border-primary/50",
+                        isSelected && "border-primary ring-primary/15 ring-2",
+                      )}
+                    >
+                      {isSelected ? (
+                        <span className="bg-primary text-primary-foreground absolute right-3 top-3 inline-flex size-5 items-center justify-center rounded-full">
+                          <Check className="size-3" />
+                        </span>
+                      ) : null}
+                      <p className="pr-7 text-sm font-semibold">
+                        {option.title}
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {option.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : requiresCustomTemplate ? (
             <div className="rounded-2xl border bg-accent/20 p-3">
               <div className="space-y-2">
                 <Label

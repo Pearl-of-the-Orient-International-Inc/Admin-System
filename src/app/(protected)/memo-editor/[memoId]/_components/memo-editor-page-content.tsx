@@ -5,6 +5,7 @@ import "@eigenpal/docx-js-editor/styles.css";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Fragment as ProseMirrorFragment } from "prosemirror-model";
+import type { ChangeEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -13,6 +14,7 @@ import {
   Mail,
   Save,
   Signature,
+  Upload,
   UserPlus,
   X,
 } from "lucide-react";
@@ -40,6 +42,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentUserQuery } from "@/features/auth/auth.hooks";
 import {
@@ -64,6 +72,11 @@ type MemoTemplateType =
   | "POLICY_CHANGE"
   | "BLANK";
 
+type GeneralOfficeTemplateVariant =
+  | "OFFICE_MEMORANDUM"
+  | "LETTER_OF_INTENT"
+  | "COURTESY_LETTER";
+
 const memoTemplateFileMap: Record<MemoTemplateType, string> = {
   ANNOUNCEMENT: "/memo-templates/Announcement.docx",
   GENERAL_OFFICE: "/memo-templates/General_Office.docx",
@@ -80,6 +93,24 @@ const memoTemplateTitleMap: Record<MemoTemplateType, string> = {
   MEETING_NOTICE: "Meeting Notice",
   POLICY_CHANGE: "Policy Change",
   BLANK: "Blank Template",
+};
+
+const generalOfficeTemplateFileMap: Record<
+  GeneralOfficeTemplateVariant,
+  string
+> = {
+  OFFICE_MEMORANDUM: "/memo-templates/General_Office.docx",
+  LETTER_OF_INTENT: "/memo-templates/Letter_of_Intent.docx",
+  COURTESY_LETTER: "/memo-templates/Courtesy_Letter.docx",
+};
+
+const generalOfficeTemplateTitleMap: Record<
+  GeneralOfficeTemplateVariant,
+  string
+> = {
+  OFFICE_MEMORANDUM: "General Office",
+  LETTER_OF_INTENT: "Letter of Intent",
+  COURTESY_LETTER: "Courtesy Letter",
 };
 
 const legacyMemoTypeMap: Record<string, MemoTemplateType> = {
@@ -101,6 +132,16 @@ const normalizeMemoType = (value: string | null): MemoTemplateType => {
   }
 
   return legacyMemoTypeMap[value] ?? "ANNOUNCEMENT";
+};
+
+const normalizeGeneralOfficeTemplate = (
+  value: string | null,
+): GeneralOfficeTemplateVariant => {
+  if (value && value in generalOfficeTemplateFileMap) {
+    return value as GeneralOfficeTemplateVariant;
+  }
+
+  return "OFFICE_MEMORANDUM";
 };
 
 const toFileSafeSegment = (value: string) =>
@@ -154,6 +195,57 @@ type MemoSignatory = {
   position: "left" | "center" | "right";
 };
 
+type SignatureMethod = "DRAW" | "UPLOAD";
+
+const MAX_SIGNATURE_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_SIGNATURE_FILE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+const readSignatureImageAsDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("The signature image could not be read."));
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("The signature image could not be read."));
+        return;
+      }
+
+      const signatureImage = new window.Image();
+      signatureImage.onerror = () =>
+        reject(new Error("The selected file is not a valid signature image."));
+      signatureImage.onload = () => {
+        const scale = Math.min(
+          1,
+          1200 / signatureImage.naturalWidth,
+          600 / signatureImage.naturalHeight,
+        );
+        const width = Math.max(1, Math.round(signatureImage.naturalWidth * scale));
+        const height = Math.max(1, Math.round(signatureImage.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("The signature image could not be prepared."));
+          return;
+        }
+
+        context.clearRect(0, 0, width, height);
+        context.drawImage(signatureImage, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      signatureImage.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+
 export function MemoEditorPageContent() {
   const { data: currentUser, isLoading: isCurrentUserLoading } = useCurrentUserQuery();
   const { memoId } = useParams<{ memoId: string }>();
@@ -176,7 +268,10 @@ export function MemoEditorPageContent() {
   const [isSignatoryDialogOpen, setIsSignatoryDialogOpen] = useState(false);
   const [printedNameInput, setPrintedNameInput] = useState("");
   const [designationInput, setDesignationInput] = useState("");
+  const [signatureMethod, setSignatureMethod] =
+    useState<SignatureMethod>("DRAW");
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [signatureFileName, setSignatureFileName] = useState("");
   const [signatories, setSignatories] = useState<MemoSignatory[]>([]);
   const [documentName, setDocumentName] = useState("Untitled Memo.docx");
   const [reservedMemo, setReservedMemo] = useState<{
@@ -188,6 +283,7 @@ export function MemoEditorPageContent() {
   const hasAppliedReferenceNumber = useRef(false);
   const documentTimestampRef = useRef(buildMemoDocumentTimestamp(new Date()));
   const signatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const signatureFileInputRef = useRef<HTMLInputElement | null>(null);
   const createMemoMutation = useCreateMemoAnnouncementMutation();
   const updateMemoMutation = useUpdateMemoAnnouncementMutation();
   const publishMemoMutation = usePublishMemoAnnouncementMutation();
@@ -196,6 +292,9 @@ export function MemoEditorPageContent() {
   const memoQuery = useMemoAnnouncementByIdQuery(memoId, mode === "UPDATE");
   const recipientsQuery = useMemoRecipientSearchQuery(recipientSearch);
   const memoType = normalizeMemoType(searchParams.get("type"));
+  const generalOfficeTemplate = normalizeGeneralOfficeTemplate(
+    searchParams.get("variant"),
+  );
   const customType = searchParams.get("customType")?.trim() ?? "";
 
   const pageTitle = useMemo(() => {
@@ -203,10 +302,17 @@ export function MemoEditorPageContent() {
       return customType;
     }
 
-    return memoTemplateTitleMap[memoType];
-  }, [customType, memoType]);
+    if (memoType === "GENERAL_OFFICE") {
+      return generalOfficeTemplateTitleMap[generalOfficeTemplate];
+    }
 
-  const templatePath = memoTemplateFileMap[memoType];
+    return memoTemplateTitleMap[memoType];
+  }, [customType, generalOfficeTemplate, memoType]);
+
+  const templatePath =
+    memoType === "GENERAL_OFFICE"
+      ? generalOfficeTemplateFileMap[generalOfficeTemplate]
+      : memoTemplateFileMap[memoType];
   const generatedDocumentName = useMemo(() => {
     const memoLabel = memoType === "BLANK" && customType ? customType : pageTitle;
     const safeMemoLabel = toFileSafeSegment(memoLabel) || "memo";
@@ -711,6 +817,80 @@ export function MemoEditorPageContent() {
     editorRef.current?.getEditorRef()?.focus();
   };
 
+  const clearSignatureCanvas = () => {
+    const canvas = signatureCanvasRef.current;
+    const context = canvas?.getContext("2d");
+
+    if (canvas && context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  const resetSignatureCapture = () => {
+    setSignatureMethod("DRAW");
+    setSignatureDataUrl(null);
+    setSignatureFileName("");
+    clearSignatureCanvas();
+
+    if (signatureFileInputRef.current) {
+      signatureFileInputRef.current.value = "";
+    }
+  };
+
+  const handleSignatureMethodChange = (value: string) => {
+    const nextMethod = value as SignatureMethod;
+    setSignatureMethod(nextMethod);
+    setSignatureDataUrl(null);
+    setSignatureFileName("");
+    clearSignatureCanvas();
+
+    if (signatureFileInputRef.current) {
+      signatureFileInputRef.current.value = "";
+    }
+  };
+
+  const handleSignatureFileChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+
+    if (!file) return;
+
+    if (!ALLOWED_SIGNATURE_FILE_TYPES.has(file.type)) {
+      toast({
+        variant: "error",
+        title: "Unsupported signature file",
+        description: "Choose a PNG, JPG, JPEG, or WebP image.",
+      });
+      return;
+    }
+
+    if (file.size > MAX_SIGNATURE_FILE_SIZE) {
+      toast({
+        variant: "error",
+        title: "Signature file is too large",
+        description: "Choose an image smaller than 5 MB.",
+      });
+      return;
+    }
+
+    try {
+      const dataUrl = await readSignatureImageAsDataUrl(file);
+      setSignatureDataUrl(dataUrl);
+      setSignatureFileName(file.name);
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Unable to attach e-signature",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The signature image could not be prepared.",
+      });
+    }
+  };
+
   const handleAddSignatory = () => {
     const normalizedPrintedName = printedNameInput.trim();
     const normalizedDesignation = designationInput.trim();
@@ -732,16 +912,7 @@ export function MemoEditorPageContent() {
       setSignatories((current) => [...current, signatory]);
       setPrintedNameInput("");
       setDesignationInput("");
-      setSignatureDataUrl(null);
-      if (signatureCanvasRef.current) {
-        const context = signatureCanvasRef.current.getContext("2d");
-        context?.clearRect(
-          0,
-          0,
-          signatureCanvasRef.current.width,
-          signatureCanvasRef.current.height,
-        );
-      }
+      resetSignatureCapture();
       setIsSignatoryDialogOpen(false);
 
       toast({
@@ -1068,8 +1239,8 @@ export function MemoEditorPageContent() {
           <DialogHeader>
             <DialogTitle>Add Signatory</DialogTitle>
             <DialogDescription>
-              Capture the signature, enter the printed name and designation,
-              then attach the signatory block to this memo.
+              Draw or upload an e-signature, enter the printed name and
+              designation, then attach the signatory block to this memo.
             </DialogDescription>
           </DialogHeader>
 
@@ -1096,14 +1267,116 @@ export function MemoEditorPageContent() {
 
             <div className="space-y-2">
               <Label>Signature</Label>
-              <SignatureInput
-                canvasRef={signatureCanvasRef}
-                onSignatureChange={setSignatureDataUrl}
-              />
-              <p className="text-muted-foreground text-xs">
-                Draw the signature here. It will be inserted into the document
-                above the printed name.
-              </p>
+              <Tabs
+                value={signatureMethod}
+                onValueChange={handleSignatureMethodChange}
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="DRAW">
+                    <Signature className="size-4" />
+                    Draw signature
+                  </TabsTrigger>
+                  <TabsTrigger value="UPLOAD">
+                    <Upload className="size-4" />
+                    Upload e-signature
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="DRAW" className="space-y-2">
+                  <SignatureInput
+                    canvasRef={signatureCanvasRef}
+                    onSignatureChange={setSignatureDataUrl}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Draw the signature here. It will be inserted above the
+                    printed name.
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="UPLOAD" className="space-y-2">
+                  <input
+                    ref={signatureFileInputRef}
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={handleSignatureFileChange}
+                  />
+
+                  <div className="flex min-h-50 flex-col items-center justify-center rounded-md border border-dashed bg-muted/20 p-4">
+                    {signatureDataUrl ? (
+                      <div className="w-full space-y-3">
+                        <div className="relative h-32 w-full overflow-hidden rounded-md bg-white">
+                          <Image
+                            src={signatureDataUrl}
+                            alt="Uploaded e-signature preview"
+                            fill
+                            unoptimized
+                            sizes="520px"
+                            className="object-contain p-3"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="min-w-0 truncate text-sm font-medium">
+                            {signatureFileName}
+                          </p>
+                          <div className="flex shrink-0 gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                signatureFileInputRef.current?.click()
+                              }
+                            >
+                              Replace
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSignatureDataUrl(null);
+                                setSignatureFileName("");
+                              }}
+                            >
+                              <X className="size-4" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 text-center">
+                        <span className="rounded-full bg-primary/10 p-3 text-primary">
+                          <Upload className="size-5" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium">
+                            Attach an e-signature image
+                          </p>
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            PNG, JPG, JPEG, or WebP up to 5 MB
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            signatureFileInputRef.current?.click()
+                          }
+                        >
+                          Choose image
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    The uploaded e-signature will be inserted above the printed
+                    name.
+                  </p>
+                </TabsContent>
+              </Tabs>
             </div>
 
             {signatories.length ? (

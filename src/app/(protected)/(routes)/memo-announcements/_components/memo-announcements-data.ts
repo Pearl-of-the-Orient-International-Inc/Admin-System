@@ -27,6 +27,35 @@ export type MemoTemplateOption = {
   iconSrc: string;
 };
 
+export type GeneralOfficeTemplateVariant =
+  | "OFFICE_MEMORANDUM"
+  | "LETTER_OF_INTENT"
+  | "COURTESY_LETTER";
+
+export type GeneralOfficeTemplateOption = {
+  value: GeneralOfficeTemplateVariant;
+  title: string;
+  description: string;
+};
+
+export const generalOfficeTemplateOptions: GeneralOfficeTemplateOption[] = [
+  {
+    value: "OFFICE_MEMORANDUM",
+    title: "Office Memorandum",
+    description: "Standard internal office communication and directives.",
+  },
+  {
+    value: "LETTER_OF_INTENT",
+    title: "Letter of Intent",
+    description: "Formal proposal to establish collaboration or partnership.",
+  },
+  {
+    value: "COURTESY_LETTER",
+    title: "Courtesy Letter",
+    description: "Formal request for a courtesy call or introductory meeting.",
+  },
+];
+
 export const memoTemplateOptions: MemoTemplateOption[] = [
   {
     value: "ANNOUNCEMENT",
