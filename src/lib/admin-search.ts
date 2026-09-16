@@ -4,6 +4,7 @@ import {
   CalendarClockIcon,
   FolderCogIcon,
   LayoutDashboardIcon,
+  MegaphoneIcon,
   NewspaperIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -124,6 +125,14 @@ export const adminSearchItems: AdminSearchItem[] = [
     section: "Content",
     keywords: ["memo editor", "draft memo", "announcement"],
     icon: BookOpenIcon,
+  },
+  {
+    title: "Bulletin Board",
+    description: "Manage public notices, memos, events, and announcements",
+    url: "/bulletin-board",
+    section: "Content",
+    keywords: ["bulletin", "notice", "announcement", "publish"],
+    icon: MegaphoneIcon,
   },
   {
     title: "Membership Report",

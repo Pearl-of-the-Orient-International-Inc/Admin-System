@@ -12,6 +12,7 @@ import {
   IconMessageCircle,
   IconNotebook,
   IconPhotoCheck,
+  IconSpeakerphone,
   IconUserCog,
   IconUsersGroup,
   IconWallet,
@@ -127,6 +128,11 @@ const data = {
       title: "Memo & Announcements",
       url: "/memo-announcements",
       icon: IconMessageCircle,
+    },
+    {
+      title: "Bulletin Board",
+      url: "/bulletin-board",
+      icon: IconSpeakerphone,
     },
     {
       title: "Reports & Analytics",
