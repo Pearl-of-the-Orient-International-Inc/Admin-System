@@ -13,6 +13,7 @@ import {
   IconNotebook,
   IconPhotoCheck,
   IconSpeakerphone,
+  IconShoppingBag,
   IconUserCog,
   IconUsersGroup,
   IconWallet,
@@ -133,6 +134,21 @@ const data = {
       title: "Bulletin Board",
       url: "/bulletin-board",
       icon: IconSpeakerphone,
+    },
+    {
+      title: "Chaplain Products",
+      url: "#",
+      icon: IconShoppingBag,
+      subItems: [
+        {
+          title: "Product Catalog",
+          url: "/chaplain-products",
+        },
+        {
+          title: "Product Orders",
+          url: "/chaplain-products/orders",
+        },
+      ],
     },
     {
       title: "Reports & Analytics",

@@ -23,12 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { OfficeTitleLevel } from "@/enums";
 import { toApiError } from "@/features/auth/auth.hooks";
 import {
   useCreateOfficeTitleMutation,
   useOfficeTitleByIdQuery,
+  useOfficeTitlesQuery,
   useUpdateOfficeTitleMutation,
 } from "@/features/office-title/office-title.hooks";
 import type {
@@ -58,6 +60,9 @@ type OfficeTitleFormState = {
   level: OfficeTitleLevel;
   description: string;
   maxSlots: string;
+  isPublic: boolean;
+  sortOrder: string;
+  reportsToId: string;
   sections: OfficeTitleSectionForm[];
 };
 
@@ -73,6 +78,9 @@ const emptyForm: OfficeTitleFormState = {
   level: OfficeTitleLevel.NATIONAL_CHAPLAIN_DIRECTOR,
   description: "",
   maxSlots: "",
+  isPublic: false,
+  sortOrder: "0",
+  reportsToId: "",
   sections: [defaultSection()],
 };
 
@@ -133,6 +141,9 @@ const mapOfficeTitleToFormState = (
     level: data.level,
     description: data.description ?? "",
     maxSlots: data.maxSlots === null ? "" : String(data.maxSlots),
+    isPublic: data.isPublic,
+    sortOrder: String(data.sortOrder),
+    reportsToId: data.reportsToId ?? "",
     sections:
       data.sections?.length > 0
         ? data.sections.map((section) => ({
@@ -197,6 +208,7 @@ function OfficeTitleFormEditor({
   const router = useRouter();
   const { toast } = useToast();
   const [form, setForm] = useState<OfficeTitleFormState>(initialForm);
+  const officeTitlesQuery = useOfficeTitlesQuery({ page: 1, limit: 100, sortBy: "name", sortOrder: "asc" });
 
   const createOfficeTitleMutation = useCreateOfficeTitleMutation();
   const updateOfficeTitleMutation = useUpdateOfficeTitleMutation();
@@ -350,6 +362,9 @@ function OfficeTitleFormEditor({
         description: form.description.trim(),
         maxSlots: normalizedMaxSlots ? Number(normalizedMaxSlots) : null,
         sections: toPayloadSections(form.sections),
+        isPublic: form.isPublic,
+        sortOrder: Number(form.sortOrder || 0),
+        reportsToId: form.reportsToId || null,
       };
 
       if (mode === "create") {
@@ -446,6 +461,41 @@ function OfficeTitleFormEditor({
                 setField("maxSlots", event.target.value.replace(/[^\d]/g, ""))
               }
             />
+          </div>
+        </div>
+
+        <div className="grid gap-4 rounded-xl border p-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="office-title-reports-to">Reports to</Label>
+            <Select
+              value={form.reportsToId || "none"}
+              onValueChange={(value) => setField("reportsToId", value === "none" ? "" : value)}
+            >
+              <SelectTrigger id="office-title-reports-to" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No parent office</SelectItem>
+                {(officeTitlesQuery.data?.items ?? [])
+                  .filter((office) => office.id !== officeTitleId)
+                  .map((office) => <SelectItem key={office.id} value={office.id}>{office.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">Defines the reporting line shown on the public structure.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="office-title-sort-order">Display order</Label>
+            <Input
+              id="office-title-sort-order"
+              inputMode="numeric"
+              value={form.sortOrder}
+              onChange={(event) => setField("sortOrder", event.target.value.replace(/[^\d]/g, ""))}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/40 px-4 py-3">
+            <div>
+              <Label htmlFor="office-title-public">Publish office</Label>
+              <p className="text-muted-foreground text-xs">Allow this position and its approved details on the website.</p>
+            </div>
+            <Switch id="office-title-public" checked={form.isPublic} onCheckedChange={(value) => setField("isPublic", value)} />
           </div>
         </div>
 

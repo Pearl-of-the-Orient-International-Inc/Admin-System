@@ -8,6 +8,7 @@ import {
   NewspaperIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  ShoppingBagIcon,
   UsersIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -133,6 +134,22 @@ export const adminSearchItems: AdminSearchItem[] = [
     section: "Content",
     keywords: ["bulletin", "notice", "announcement", "publish"],
     icon: MegaphoneIcon,
+  },
+  {
+    title: "Chaplain Products",
+    description: "Manage the public catalog, pricing, and inventory",
+    url: "/chaplain-products",
+    section: "Content",
+    keywords: ["products", "shop", "inventory", "stock", "merchandise"],
+    icon: ShoppingBagIcon,
+  },
+  {
+    title: "Product Orders",
+    description: "Review and update Chaplain product orders",
+    url: "/chaplain-products/orders",
+    section: "Content",
+    keywords: ["orders", "shop", "payment", "fulfillment", "customer"],
+    icon: ShoppingBagIcon,
   },
   {
     title: "Membership Report",

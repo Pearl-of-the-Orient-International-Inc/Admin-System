@@ -8,10 +8,15 @@ import { GlobalDataTable } from "@/components/DataTable";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import type { OfficerAssignmentResource } from "@/features/officer-assignment/officer-assignment.types";
+import { useUpdateOfficerAssignmentPublicationMutation } from "@/features/officer-assignment/officer-assignment.hooks";
+import { useToast } from "@/hooks/use-toast";
+import { toApiError } from "@/features/auth/auth.hooks";
 
 type AssignedOfficeHolderRecord = {
   id: string;
+  memberId: string;
   fullName: string;
   email: string;
   avatarUrl: string | null;
@@ -19,6 +24,8 @@ type AssignedOfficeHolderRecord = {
   officeLevel: string;
   jurisdiction: string;
   startedAt: string;
+  isPublic: boolean;
+  officeIsPublic: boolean;
 };
 
 export function AssignedOfficeHoldersTable({
@@ -26,12 +33,15 @@ export function AssignedOfficeHoldersTable({
 }: {
   data: OfficerAssignmentResource[];
 }) {
+  const { toast } = useToast();
+  const publicationMutation = useUpdateOfficerAssignmentPublicationMutation();
   const rows = useMemo<AssignedOfficeHolderRecord[]>(
     () =>
       data
         .filter((assignment) => assignment.member)
         .map((assignment) => ({
           id: assignment.id,
+          memberId: assignment.memberId,
           fullName: [
             assignment.member?.firstName,
             assignment.member?.middleInitial?.trim(),
@@ -55,6 +65,8 @@ export function AssignedOfficeHoldersTable({
               .filter(Boolean)
               .join(" · ") || "Not specified",
           startedAt: assignment.startDate,
+          isPublic: assignment.isPublic,
+          officeIsPublic: assignment.officeTitle.isPublic,
         })),
     [data],
   );
@@ -117,8 +129,48 @@ export function AssignedOfficeHoldersTable({
             day: "numeric",
           }),
       },
+      {
+        accessorKey: "isPublic",
+        header: "Website",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={row.original.isPublic}
+              disabled={publicationMutation.isPending || !row.original.officeIsPublic}
+              aria-label={`Publish ${row.original.fullName}`}
+              onCheckedChange={async (isPublic) => {
+                try {
+                  await publicationMutation.mutateAsync({
+                    memberId: row.original.memberId,
+                    assignmentId: row.original.id,
+                    isPublic,
+                  });
+                  toast({
+                    title: isPublic ? "Officer published" : "Officer hidden",
+                    description: isPublic
+                      ? "This officer can now appear in the public organizational structure."
+                      : "This officer is no longer visible on the public website.",
+                    variant: "success",
+                  });
+                } catch (error) {
+                  toast({
+                    title: "Publication update failed",
+                    description: toApiError(error).message,
+                    variant: "error",
+                  });
+                }
+              }}
+            />
+            <span className="text-muted-foreground text-xs">
+              {!row.original.officeIsPublic
+                ? "Publish office first"
+                : row.original.isPublic ? "Public" : "Private"}
+            </span>
+          </div>
+        ),
+      },
     ],
-    [],
+    [publicationMutation, toast],
   );
 
   return (

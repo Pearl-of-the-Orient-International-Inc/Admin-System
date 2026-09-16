@@ -68,3 +68,19 @@ export async function replaceOfficerAssignmentByMemberId({
   );
   return data.data;
 }
+
+export async function updateOfficerAssignmentPublication({
+  memberId,
+  assignmentId,
+  isPublic,
+}: {
+  memberId: string;
+  assignmentId: string;
+  isPublic: boolean;
+}) {
+  const { data } = await api.patch<OfficerAssignmentEnvelopeResponse>(
+    `/members/${encodeURIComponent(memberId)}/officer-assignments/${encodeURIComponent(assignmentId)}/publication`,
+    { isPublic },
+  );
+  return data.data;
+}

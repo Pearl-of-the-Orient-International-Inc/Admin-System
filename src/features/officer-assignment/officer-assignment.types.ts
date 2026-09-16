@@ -23,6 +23,7 @@ export type OfficerAssignmentResource = {
   cityMunicipality: string | null;
   barangay: string | null;
   isActive: boolean;
+  isPublic: boolean;
   startDate: string;
   endDate: string | null;
   createdAt: string;
@@ -33,6 +34,7 @@ export type OfficerAssignmentResource = {
     level: string;
     maxSlots: number | null;
     isActive: boolean;
+    isPublic: boolean;
   };
   member?: {
     id: string;

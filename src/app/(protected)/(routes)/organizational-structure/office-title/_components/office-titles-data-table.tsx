@@ -84,6 +84,15 @@ export function OfficeTitlesDataTable({
         ),
       },
       {
+        accessorKey: "isPublic",
+        header: "Website",
+        cell: ({ row }) => (
+          <Badge variant={row.original.isPublic ? "success" : "secondary"}>
+            {row.original.isPublic ? "Published" : "Private"}
+          </Badge>
+        ),
+      },
+      {
         accessorKey: "maxSlots",
         header: "Slots",
         cell: ({ row }) =>

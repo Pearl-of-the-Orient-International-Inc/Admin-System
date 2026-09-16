@@ -76,3 +76,14 @@ export const useReplaceOfficerAssignmentMutation = () => {
     meta: { feature: "officer-assignment.replace" },
   });
 };
+
+export const useUpdateOfficerAssignmentPublicationMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: officerAssignmentApi.updateOfficerAssignmentPublication,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["officer-assignments"] });
+    },
+    meta: { feature: "officer-assignment.publication" },
+  });
+};

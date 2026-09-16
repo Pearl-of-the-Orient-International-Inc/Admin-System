@@ -23,6 +23,9 @@ export interface OfficeTitleResource extends Record<string, unknown> {
   maxSlots: number | null;
   sections: OfficeTitleSection[];
   isActive: boolean;
+  isPublic: boolean;
+  sortOrder: number;
+  reportsToId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,6 +66,9 @@ export interface CreateOfficeTitleRequest {
   description?: string | null;
   maxSlots?: number | null;
   sections?: OfficeTitleSection[];
+  isPublic?: boolean;
+  sortOrder?: number;
+  reportsToId?: string | null;
 }
 
 export interface UpdateOfficeTitleRequest {
@@ -71,4 +77,7 @@ export interface UpdateOfficeTitleRequest {
   description?: string | null;
   maxSlots?: number | null;
   sections?: OfficeTitleSection[];
+  isPublic?: boolean;
+  sortOrder?: number;
+  reportsToId?: string | null;
 }
