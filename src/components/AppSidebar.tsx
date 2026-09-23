@@ -17,6 +17,8 @@ import {
   IconUserCog,
   IconUsersGroup,
   IconWallet,
+  IconBriefcase,
+  IconTableColumn,
 } from "@tabler/icons-react";
 import {
   Sidebar,
@@ -52,6 +54,10 @@ const data = {
         {
           title: "Certifications & Recognitions",
           url: "/members/certifications",
+        },
+        {
+          title: "Ordination Applications",
+          url: "/ordination-applications",
         },
         {
           title: "Pending Applications",
@@ -94,8 +100,28 @@ const data = {
       icon: IconCalendarEvent,
     },
     {
+      title: "Chaplain Services",
+      url: "#",
+      icon: IconBriefcase,
+      subItems: [
+        {
+          title: "Chaplain Services",
+          url: "/chaplain-services",
+        },
+        {
+          title: "Booking Requests",
+          url: "/chaplain-services/booking-requests",
+        },
+      ],
+    },
+    {
       title: "Task Management",
       url: "/task-management",
+      icon: IconTableColumn,
+    },
+    {
+      title: "Survey Responses",
+      url: "/survey-responses",
       icon: IconClipboardList,
     },
     {
