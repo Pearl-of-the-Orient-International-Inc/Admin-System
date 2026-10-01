@@ -60,6 +60,10 @@ const data = {
           url: "/ordination-applications",
         },
         {
+          title: "CRASM Applications",
+          url: "/crasm-applications",
+        },
+        {
           title: "Pending Applications",
           url: "/members/pending",
         },

@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Eye, ScrollText } from "lucide-react";
+import { CheckCircle2, Clock3, Eye, ScrollText, SearchCheck } from "lucide-react";
 import { GlobalDataTable } from "@/components/DataTable";
 import { PageLoadingState } from "@/components/PageLoadingState";
 import { PageErrorState } from "@/components/PageErrorState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,9 +34,10 @@ export function OrdinationApplicationsPageContent() {
   if (query.isLoading) return <PageLoadingState mode="table" />;
   if (query.isError) return <PageErrorState title="Unable to load ordination applications" description="Try again shortly." backUrl="/dashboard" backLabel="Back to dashboard" />;
   const data = query.data ?? [];
-  return <section className="space-y-6 p-10"><div><h1 className="text-2xl font-semibold">Ordination Applications</h1><p className="text-muted-foreground text-sm">Validate eligibility, review evidence, request corrections, and record decisions.</p></div>
-    <div className="grid gap-4 md:grid-cols-4">{["SUBMITTED", "UNDER_REVIEW", "ADDITIONAL_INFORMATION_REQUIRED", "APPROVED"].map((status) => <Card key={status}><CardHeader className="pb-2"><CardTitle className="text-sm">{format(status)}</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{data.filter((item) => item.status === status).length}</CardContent></Card>)}</div>
-    <Card><CardContent className="pt-6"><GlobalDataTable data={data} columns={columns} filterPlaceholder="Search applicant or status..." emptyMessage="No ordination applications found." exportFileName="ordination-applications" cellAction={(row) => <Button variant="ghost" size="icon-sm" onClick={() => setSelected(row.original)}><Eye className="size-4" /></Button>} /></CardContent></Card>
+  const summary = [{ status: "SUBMITTED", icon: Clock3, tone: "bg-amber-700/10 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300", label: "Awaiting review", note: "Submitted applications" }, { status: "UNDER_REVIEW", icon: SearchCheck, tone: "bg-sky-700/10 text-sky-700 dark:bg-sky-300/10 dark:text-sky-300", label: "In review", note: "Being evaluated" }, { status: "ADDITIONAL_INFORMATION_REQUIRED", icon: Clock3, tone: "bg-orange-700/10 text-orange-700 dark:bg-orange-300/10 dark:text-orange-300", label: "Action needed", note: "Awaiting applicant response" }, { status: "APPROVED", icon: CheckCircle2, tone: "bg-emerald-700/10 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300", label: "Approved", note: "Completed decisions" }];
+  return <section className="space-y-6 p-10"><div className="space-y-1"><h1 className="text-2xl font-semibold tracking-tight">Ordination Applications</h1><p className="text-muted-foreground text-sm">Validate eligibility, review evidence, request corrections, and record decisions.</p></div>
+    <Card className="overflow-hidden bg-transparent"><CardHeader className="border-b"><CardTitle>Application Summary</CardTitle><CardDescription>Snapshot of the ordination review queue and decisions.</CardDescription></CardHeader><CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{summary.map(({ status, icon: Icon, tone, label, note }) => <div key={status} className="rounded-lg border bg-card p-4 shadow-xs transition-colors hover:border-primary"><div className="mb-2 flex items-center justify-between"><p className="text-muted-foreground text-xs font-medium uppercase">{label}</p><span className={`rounded-md p-1.5 ${tone}`}><Icon className="size-4" /></span></div><p className="text-2xl font-semibold">{data.filter((item) => item.status === status).length}</p><p className="text-muted-foreground mt-1 text-xs">{note}</p></div>)}</CardContent></Card>
+    <Card className="bg-transparent"><CardHeader className="border-b pb-4"><CardTitle>Review Queue</CardTitle><CardDescription>Open an application to inspect documents and record a review decision.</CardDescription></CardHeader><CardContent className="pt-6"><GlobalDataTable data={data} columns={columns} filterPlaceholder="Search applicant or status..." emptyMessage="No ordination applications found." exportFileName="ordination-applications" cellAction={(row) => <Button variant="ghost" size="icon-sm" onClick={() => setSelected(row.original)}><Eye className="size-4" /></Button>} /></CardContent></Card>
     <Sheet open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}><SheetContent className="w-full overflow-y-auto sm:max-w-2xl"><SheetHeader><SheetTitle>Ordination Application</SheetTitle><SheetDescription>Approval does not change account access or officer assignments.</SheetDescription></SheetHeader>{selected && <div className="space-y-6 px-4 pb-6">
       <div className="rounded-lg border p-4"><p className="font-semibold">{selected.member.firstName} {selected.member.lastName}</p><p className="text-sm text-muted-foreground">{selected.member.user.email} · {format(selected.eligibilityMemberType)}</p><Badge className="mt-2">{format(selected.status)}</Badge></div>
       {[["Ministry background", selected.ministryBackground], ["Calling statement", selected.callingStatement], ["Proposed ministry", selected.proposedMinistry], ["Additional information", selected.additionalInformation]].map(([label, value]) => value && <div key={label}><h3 className="font-medium">{label}</h3><p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{value}</p></div>)}
