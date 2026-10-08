@@ -9,7 +9,6 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +101,6 @@ export function CertificateBatchSheet({
   isExportingPdf,
   previewItems,
 }: Props) {
-  const [popoverContainer, setPopoverContainer] = useState<HTMLDivElement | null>(null);
   const allSelectedParticipantsChecked =
     selectedParticipants.length > 0 &&
     selectedParticipants.every((member) => checkedParticipantIds.includes(member.id));
@@ -115,7 +113,6 @@ export function CertificateBatchSheet({
         side="right"
         className="w-full gap-0 overflow-y-auto p-0 no-scrollbar max-w-full!"
       >
-        <div ref={setPopoverContainer} />
         <SheetHeader className="border-b px-6 py-5">
           <SheetTitle>Generate Certificate Batch</SheetTitle>
           <SheetDescription>
@@ -158,7 +155,7 @@ export function CertificateBatchSheet({
                   <PopoverContent
                     align="start"
                     className="w-105 p-0"
-                    container={popoverContainer ?? undefined}
+                    portalled={false}
                   >
                     <Command>
                       <CommandInput placeholder="Search approved members..." />
