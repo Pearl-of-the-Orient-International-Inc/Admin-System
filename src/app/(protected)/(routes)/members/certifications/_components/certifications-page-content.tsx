@@ -63,7 +63,9 @@ function isDefinedMember<T>(member: T | undefined): member is T {
 export function CertificationsPageContent() {
   const { toast } = useToast();
   const membersQuery = useMembersQuery({
-    limit: 100,
+    // A certificate batch can include any approved member. The API defaults to
+    // paginating results, so a fixed limit hid approved members beyond page one.
+    all: true,
     status: MemberStatus.APPROVED,
   });
 

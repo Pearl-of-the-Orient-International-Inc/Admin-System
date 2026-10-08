@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useEffect, useState, type ChangeEvent } from "react";
@@ -66,7 +67,7 @@ export function StepReferencesReview({
     <div className="space-y-5">
       <div className="space-y-3">
         <h3 className="font-serif text-base text-foreground sm:text-lg">
-          Endorsed by
+          Must be endorsed by a Chaplain
         </h3>
         <p className="text-xs text-foreground/70 sm:text-sm">
           Please provide one person who endorses your application.
