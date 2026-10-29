@@ -8,12 +8,14 @@ import {
   Files,
   LayoutGrid,
   MoreVertical,
-  Edit,
   Plus,
+  Edit,
   Rows3,
   Signature,
   Archive,
   RotateCcw,
+  Send,
+  ShieldMinus,
   Shapes,
   Trash2,
 } from "lucide-react";
@@ -61,6 +63,8 @@ import {
   useArchiveMemoAnnouncementMutation,
   useDeleteMemoAnnouncementMutation,
   useMemoAnnouncementsQuery,
+  usePublishMemoAnnouncementMutation,
+  useRejectMemoAnnouncementMutation,
   useRestoreMemoAnnouncementMutation,
 } from "@/features/memo-announcements/memo-announcement.hooks";
 import { MemoAnnouncementsDataTable } from "./memo-announcements-data-table";
@@ -69,7 +73,7 @@ import { MemoTemplateDialog } from "./memo-template-dialog";
 type MemoViewMode = "grid" | "table";
 type MemoFilter = "ALL" | MemoTemplateType;
 type MemoRecordAction = {
-  type: "archive" | "restore" | "delete";
+  type: "archive" | "restore" | "delete" | "reject" | "approve";
   record: MemoAnnouncementRecord;
 };
 
@@ -83,6 +87,8 @@ export function MemoAnnouncementsPageContent() {
   const archiveMemoMutation = useArchiveMemoAnnouncementMutation();
   const restoreMemoMutation = useRestoreMemoAnnouncementMutation();
   const deleteMemoMutation = useDeleteMemoAnnouncementMutation();
+  const rejectMemoMutation = useRejectMemoAnnouncementMutation();
+  const publishMemoMutation = usePublishMemoAnnouncementMutation();
   const memosQuery = useMemoAnnouncementsQuery({
     limit: 1000,
     sortBy: "updatedAt",
@@ -209,6 +215,46 @@ export function MemoAnnouncementsPageContent() {
     }
   };
 
+  const handleReject = async (record: MemoAnnouncementRecord) => {
+    try {
+      await rejectMemoMutation.mutateAsync({ id: record.id });
+      toast({
+        variant: "success",
+        title: "Officer draft rejected",
+        description: `${record.referenceNumber} was returned as rejected and will not be delivered.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Rejection failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The officer memo could not be rejected right now.",
+      });
+    }
+  };
+
+  const handleApprove = async (record: MemoAnnouncementRecord) => {
+    try {
+      await publishMemoMutation.mutateAsync({ id: record.id });
+      toast({
+        variant: "success",
+        title: "Officer draft approved and published",
+        description: `${record.referenceNumber} was delivered to its scoped recipients.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Approval failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The officer memo could not be approved right now.",
+      });
+    }
+  };
+
   const handleConfirmRecordAction = async () => {
     if (!pendingRecordAction) return;
 
@@ -218,6 +264,10 @@ export function MemoAnnouncementsPageContent() {
       await handleArchive(record);
     } else if (type === "restore") {
       await handleRestore(record);
+    } else if (type === "reject") {
+      await handleReject(record);
+    } else if (type === "approve") {
+      await handleApprove(record);
     } else {
       await handleDelete();
     }
@@ -228,7 +278,9 @@ export function MemoAnnouncementsPageContent() {
   const isRecordActionBusy =
     archiveMemoMutation.isPending ||
     restoreMemoMutation.isPending ||
-    deleteMemoMutation.isPending;
+    deleteMemoMutation.isPending ||
+    rejectMemoMutation.isPending ||
+    publishMemoMutation.isPending;
 
   return (
     <section className="space-y-6 p-10">
@@ -242,21 +294,16 @@ export function MemoAnnouncementsPageContent() {
             browsing views, and publication history.
           </p>
         </div>
-
-        {!hasNoRecords && (
-          <Button onClick={() => setIsTemplateDialogOpen(true)}>
-            <Plus className="size-4" />
-            Create memo
-          </Button>
-        )}
+        <Button onClick={() => setIsTemplateDialogOpen(true)}>
+          <Plus className="size-4" />
+          Create memo
+        </Button>
       </div>
 
       {hasNoRecords ? (
         <PageEmptyState
           title="No memos or announcements found"
           description="Create the first memo or announcement to start distributing official documents across the organization."
-          createAction={() => setIsTemplateDialogOpen(true)}
-          createLabel="Create memo"
         />
       ) : (
         <>
@@ -379,12 +426,17 @@ export function MemoAnnouncementsPageContent() {
                   onView={handleView}
                   onEdit={handleEdit}
                   onCopyId={handleCopyId}
-                  onCreate={() => setIsTemplateDialogOpen(true)}
                   onArchive={(record) =>
                     setPendingRecordAction({ type: "archive", record })
                   }
                   onRestore={(record) =>
                     setPendingRecordAction({ type: "restore", record })
+                  }
+                  onReject={(record) =>
+                    setPendingRecordAction({ type: "reject", record })
+                  }
+                  onApprove={(record) =>
+                    setPendingRecordAction({ type: "approve", record })
                   }
                   onDelete={(record) =>
                     setPendingRecordAction({ type: "delete", record })
@@ -403,6 +455,12 @@ export function MemoAnnouncementsPageContent() {
                   onRestore={(record) =>
                     setPendingRecordAction({ type: "restore", record })
                   }
+                  onReject={(record) =>
+                    setPendingRecordAction({ type: "reject", record })
+                  }
+                  onApprove={(record) =>
+                    setPendingRecordAction({ type: "approve", record })
+                  }
                   onDelete={(record) =>
                     setPendingRecordAction({ type: "delete", record })
                   }
@@ -414,10 +472,6 @@ export function MemoAnnouncementsPageContent() {
         </>
       )}
 
-      <MemoTemplateDialog
-        open={isTemplateDialogOpen}
-        onOpenChange={setIsTemplateDialogOpen}
-      />
 
       <AlertDialog
         open={Boolean(pendingRecordAction)}
@@ -438,6 +492,10 @@ export function MemoAnnouncementsPageContent() {
                 <RotateCcw className="size-8" />
               ) : pendingRecordAction?.type === "archive" ? (
                 <Archive className="size-8" />
+              ) : pendingRecordAction?.type === "reject" ? (
+                <ShieldMinus className="size-8" />
+              ) : pendingRecordAction?.type === "approve" ? (
+                <Send className="size-8" />
               ) : (
                 <Trash2 className="size-8" />
               )}
@@ -447,6 +505,10 @@ export function MemoAnnouncementsPageContent() {
                 ? "Restore this memo?"
                 : pendingRecordAction?.type === "archive"
                   ? "Archive this memo?"
+                  : pendingRecordAction?.type === "reject"
+                    ? "Reject this officer draft?"
+                    : pendingRecordAction?.type === "approve"
+                      ? "Approve and publish this officer draft?"
                   : "Delete this memo?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -454,6 +516,10 @@ export function MemoAnnouncementsPageContent() {
                 ? `${pendingRecordAction.record.referenceNumber} will be restored to the memo list.`
                 : pendingRecordAction?.type === "archive"
                   ? `${pendingRecordAction.record.referenceNumber} will be moved to archived memos and can be restored later.`
+                  : pendingRecordAction?.type === "reject"
+                    ? `${pendingRecordAction.record.referenceNumber} will not be delivered. The officer will see that it was rejected.`
+                    : pendingRecordAction?.type === "approve"
+                      ? `${pendingRecordAction.record.referenceNumber} will be approved and sent to its current scoped recipients.`
                   : pendingRecordAction
                     ? `${pendingRecordAction.record.referenceNumber} will be permanently deleted. This cannot be restored.`
                     : "Confirm this memo action."}
@@ -478,11 +544,19 @@ export function MemoAnnouncementsPageContent() {
                   ? "Restore"
                   : pendingRecordAction?.type === "archive"
                     ? "Archive"
+                    : pendingRecordAction?.type === "reject"
+                      ? "Reject draft"
+                      : pendingRecordAction?.type === "approve"
+                        ? "Approve & publish"
                     : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <MemoTemplateDialog
+        open={isTemplateDialogOpen}
+        onOpenChange={setIsTemplateDialogOpen}
+      />
     </section>
   );
 }
@@ -492,9 +566,10 @@ function MemoAnnouncementsGridView({
   onView,
   onEdit,
   onCopyId,
-  onCreate,
   onArchive,
   onRestore,
+  onReject,
+  onApprove,
   onDelete,
   isActionBusy,
 }: {
@@ -502,9 +577,10 @@ function MemoAnnouncementsGridView({
   onView: (record: MemoAnnouncementRecord) => void;
   onEdit: (record: MemoAnnouncementRecord) => void;
   onCopyId: (record: MemoAnnouncementRecord) => Promise<void>;
-  onCreate: () => void;
   onArchive: (record: MemoAnnouncementRecord) => void;
   onRestore: (record: MemoAnnouncementRecord) => void;
+  onReject: (record: MemoAnnouncementRecord) => void;
+  onApprove: (record: MemoAnnouncementRecord) => void;
   onDelete: (record: MemoAnnouncementRecord) => void;
   isActionBusy: boolean;
 }) {
@@ -513,8 +589,6 @@ function MemoAnnouncementsGridView({
       <PageEmptyState
         title="No matching documents found"
         description="Try another filter or create a new memo or announcement to populate this view."
-        createAction={onCreate}
-        createLabel="Create memo"
       />
     );
   }
@@ -560,6 +634,25 @@ function MemoAnnouncementsGridView({
                   <Edit className="size-4" />
                   Edit memo
                 </DropdownMenuItem>
+                {record.author?.role === "OFFICER" && record.status === "DRAFT" ? (
+                  <>
+                    <DropdownMenuItem
+                      disabled={isActionBusy}
+                      onClick={() => onApprove(record)}
+                    >
+                      <Send className="size-4" />
+                      Approve & publish
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={isActionBusy}
+                      onClick={() => onReject(record)}
+                    >
+                      <ShieldMinus className="size-4" />
+                      Reject officer draft
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
                 <DropdownMenuSeparator />
                 {record.status === "ARCHIVED" ? (
                   <DropdownMenuItem

@@ -71,6 +71,10 @@ const data = {
           title: "Renewal Members",
           url: "/members/renewal",
         },
+        {
+          title: "Referral & Recognition",
+          url: "/members/referral-recognition",
+        },
       ],
     },
     {

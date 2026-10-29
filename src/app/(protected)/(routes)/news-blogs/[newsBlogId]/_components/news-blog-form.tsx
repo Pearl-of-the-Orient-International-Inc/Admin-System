@@ -111,9 +111,11 @@ export function NewsBlogForm({
     newsBlogId ?? "",
     mode === "update",
   );
+  const [memberSearch, setMemberSearch] = useState("");
   const membersQuery = useMembersQuery({
-    limit: 100,
+    all: true,
     status: MemberStatus.APPROVED,
+    search: memberSearch.trim() || undefined,
   });
   const createNewsBlogMutation = useCreateNewsBlogMutation();
   const updateNewsBlogMutation = useUpdateNewsBlogMutation();
@@ -1025,7 +1027,10 @@ export function NewsBlogForm({
 
                 <Popover
                   open={memberPickerOpen}
-                  onOpenChange={setMemberPickerOpen}
+                  onOpenChange={(open) => {
+                    setMemberPickerOpen(open);
+                    if (!open) setMemberSearch("");
+                  }}
                 >
                   <PopoverTrigger asChild>
                     <Button
@@ -1046,7 +1051,11 @@ export function NewsBlogForm({
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-105 p-0">
                     <Command>
-                      <CommandInput placeholder="Search approved members..." />
+                      <CommandInput
+                        value={memberSearch}
+                        onValueChange={setMemberSearch}
+                        placeholder="Search approved members by name, email, or ID..."
+                      />
                       <CommandList>
                         <CommandEmpty>
                           {membersQuery.isLoading

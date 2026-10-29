@@ -85,6 +85,20 @@ export async function restoreMemoAnnouncementById(id: string) {
   return data.data;
 }
 
+export async function rejectMemoAnnouncementById({
+  id,
+  reviewNotes,
+}: {
+  id: string;
+  reviewNotes?: string;
+}) {
+  const { data } = await api.post<MemoAnnouncementEnvelopeResponse>(
+    `/memo-announcements/${encodeURIComponent(id)}/reject`,
+    { reviewNotes },
+  );
+  return data.data;
+}
+
 export async function searchMemoRecipients(search: string) {
   const { data } = await api.get<MemoRecipientSearchResponse>(
     "/memo-announcements/recipients/search",

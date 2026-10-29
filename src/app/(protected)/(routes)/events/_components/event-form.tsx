@@ -244,9 +244,11 @@ function EventFormEditor({
   const router = useRouter();
   const { toast } = useToast();
   const eventQuery = useEventByIdQuery(eventId ?? "", mode === "update");
+  const [taggedMemberSearch, setTaggedMemberSearch] = useState("");
   const membersQuery = useMembersQuery({
-    limit: 100,
+    all: true,
     status: MemberStatus.APPROVED,
+    search: taggedMemberSearch.trim() || undefined,
   });
   const createEventMutation = useCreateEventMutation();
   const updateEventMutation = useUpdateEventMutation();
@@ -889,7 +891,10 @@ function EventFormEditor({
 
                   <Popover
                     open={taggedMemberPickerOpen}
-                    onOpenChange={setTaggedMemberPickerOpen}
+                  onOpenChange={(open) => {
+                    setTaggedMemberPickerOpen(open);
+                    if (!open) setTaggedMemberSearch("");
+                  }}
                   >
                     <PopoverTrigger asChild>
                       <Button
@@ -910,7 +915,11 @@ function EventFormEditor({
                     </PopoverTrigger>
                     <PopoverContent align="start" className="w-[420px] p-0">
                       <Command>
-                        <CommandInput placeholder="Search approved members..." />
+                        <CommandInput
+                          value={taggedMemberSearch}
+                          onValueChange={setTaggedMemberSearch}
+                          placeholder="Search approved members by name, email, or ID..."
+                        />
                         <CommandList>
                           <CommandEmpty>
                             {membersQuery.isLoading

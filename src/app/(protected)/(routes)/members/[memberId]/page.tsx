@@ -104,10 +104,13 @@ export default function AdminMemberFormPage() {
       } else {
         await updateMemberMutation.mutateAsync({
           memberId: routeMemberId,
-          payload: {
-            ...payload,
-            profileBannerUrl: existingMember?.profileBannerUrl ?? undefined,
-          },
+          // The admin membership form does not edit the profile banner. Do not
+          // send its existing value back with every profile save: older member
+          // records can contain a local banner path, while the banner endpoint
+          // intentionally validates only absolute URLs. Omitting it preserves
+          // the stored banner and lets unrelated changes, such as a badge
+          // number, save normally.
+          payload,
         });
         toast({
           title: "Member updated",

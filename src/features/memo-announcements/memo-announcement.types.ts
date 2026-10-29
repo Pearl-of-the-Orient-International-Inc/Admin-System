@@ -8,6 +8,7 @@ export type MemoTemplateType =
 
 export type MemoStatus =
   | "DRAFT"
+  | "REJECTED"
   | "PUBLISHING"
   | "PUBLISHED"
   | "FAILED"
@@ -79,7 +80,11 @@ export type MemoAnnouncementRecord = {
     name: string;
     email: string;
     avatar: string | null;
+    role: string;
   } | null;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
+  reviewNotes: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;

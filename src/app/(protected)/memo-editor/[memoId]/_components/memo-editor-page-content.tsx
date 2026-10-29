@@ -274,12 +274,7 @@ export function MemoEditorPageContent() {
   const [signatureFileName, setSignatureFileName] = useState("");
   const [signatories, setSignatories] = useState<MemoSignatory[]>([]);
   const [documentName, setDocumentName] = useState("Untitled Memo.docx");
-  const [reservedMemo, setReservedMemo] = useState<{
-    id: string;
-    referenceNumber: string;
-  } | null>(null);
   const hasInitializedDocumentName = useRef(false);
-  const hasReservedMemoRef = useRef(false);
   const hasAppliedReferenceNumber = useRef(false);
   const documentTimestampRef = useRef(buildMemoDocumentTimestamp(new Date()));
   const signatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -404,52 +399,6 @@ export function MemoEditorPageContent() {
     };
   }, [templatePath]);
 
-  useEffect(() => {
-    if (mode !== "CREATE") return;
-    if (hasReservedMemoRef.current) return;
-    if (isCurrentUserLoading || !hasInitializedDocumentName.current) return;
-
-    hasReservedMemoRef.current = true;
-
-    createMemoMutation
-      .mutateAsync({
-        title: pageTitle,
-        category: memoType,
-        customCategory: memoType === "BLANK" ? customType || null : null,
-        summary: null,
-        documentName,
-        recipientScope,
-        recipientTargets: [],
-      })
-      .then((memo) => {
-        setReservedMemo({
-          id: memo.id,
-          referenceNumber: memo.referenceNumber,
-        });
-      })
-      .catch((error) => {
-        hasReservedMemoRef.current = false;
-        toast({
-          variant: "error",
-          title: "Reference number failed",
-          description:
-            error instanceof Error
-              ? error.message
-              : "The memo reference number could not be generated.",
-        });
-      });
-  }, [
-    createMemoMutation,
-    customType,
-    documentName,
-    isCurrentUserLoading,
-    memoType,
-    mode,
-    pageTitle,
-    recipientScope,
-    toast,
-  ]);
-
   const buildRecipientTargets = (): MemoRecipientTarget[] =>
     selectedRecipients.map((recipient) => ({
       type: recipient.type,
@@ -499,9 +448,9 @@ export function MemoEditorPageContent() {
     return true;
   };
 
-  const activeMemoId = mode === "UPDATE" ? memoId : reservedMemo?.id;
+  const activeMemoId = mode === "UPDATE" ? memoId : undefined;
   const activeReferenceNumber =
-    memoQuery.data?.referenceNumber ?? reservedMemo?.referenceNumber;
+    memoQuery.data?.referenceNumber;
 
   useEffect(() => {
     if (!activeReferenceNumber || hasAppliedReferenceNumber.current) {
@@ -1037,17 +986,15 @@ export function MemoEditorPageContent() {
                   size="sm"
                   onClick={() => void handleSave()}
                   disabled={
-                    isSaving ||
-                    createMemoMutation.isPending ||
-                    updateMemoMutation.isPending
+                    isSaving || updateMemoMutation.isPending
                   }
                 >
-                  {isSaving || createMemoMutation.isPending || updateMemoMutation.isPending ? (
+                  {isSaving || updateMemoMutation.isPending ? (
                     <LoaderCircle className="size-4 animate-spin" />
                   ) : (
                     <Save className="size-4" />
                   )}
-                  {isSaving || createMemoMutation.isPending || updateMemoMutation.isPending
+                  {isSaving || updateMemoMutation.isPending
                     ? "Saving..."
                     : "Save"}
                 </Button>

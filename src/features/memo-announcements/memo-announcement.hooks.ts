@@ -124,3 +124,20 @@ export const useRestoreMemoAnnouncementMutation = () => {
     meta: { feature: "memoAnnouncements.restore" },
   });
 };
+
+export const useRejectMemoAnnouncementMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: memoApi.rejectMemoAnnouncementById,
+    onSuccess: async (memo) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["memo-announcements", "list"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["memo-announcements", "detail", memo.id],
+      });
+    },
+    meta: { feature: "memoAnnouncements.reject" },
+  });
+};

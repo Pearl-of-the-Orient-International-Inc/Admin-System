@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BriefcaseBusiness,
   Check,
@@ -46,6 +46,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MemberStatus, OfficeTitleLevel } from "@/enums";
 import { toApiError } from "@/features/auth/auth.hooks";
@@ -60,6 +67,14 @@ import {
 import type { OfficerAssignmentResource } from "@/features/officer-assignment/officer-assignment.types";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  getPsgcBarangays,
+  getPsgcCitiesMunicipalities,
+  getPsgcProvinces,
+  getPsgcRegionLabel,
+  getPsgcRegions,
+  type PsgcLocation,
+} from "@/lib/psgc";
 import type { AdminMember } from "@/lib/api-types";
 import type { MemberRecord } from "./members-data";
 import {
@@ -94,6 +109,20 @@ const emptyForm: AssignmentFormState = {
   startDate: "",
 };
 
+type JurisdictionSelection = {
+  regionCode: string;
+  provinceCode: string;
+  cityMunicipalityCode: string;
+  barangayCode: string;
+};
+
+const emptyJurisdictionSelection: JurisdictionSelection = {
+  regionCode: "",
+  provinceCode: "",
+  cityMunicipalityCode: "",
+  barangayCode: "",
+};
+
 const formatOfficeTitleLevel = (level: string) =>
   level
     .split("_")
@@ -117,42 +146,25 @@ const buildFullName = (member: AdminMember) =>
     .filter(Boolean)
     .join(" ");
 
-const getRequiredJurisdictionField = (level?: string | null) => {
+const getRequiredJurisdictionFields = (level?: string | null) => {
   switch (level) {
     case OfficeTitleLevel.NATIONAL_CHAPLAIN_DIRECTOR:
-      return "department";
+      return [];
     case OfficeTitleLevel.REGIONAL_CHAPLAIN_DIRECTOR:
     case OfficeTitleLevel.REGIONAL_DEPUTY_CHAPLAIN_DIRECTOR:
-      return "region";
+      return ["region"] as const;
     case OfficeTitleLevel.PROVINCIAL_CHAPLAIN_DIRECTOR:
     case OfficeTitleLevel.PROVINCIAL_DEPUTY_CHAPLAIN_DIRECTOR:
-      return "province";
+      return ["region", "province"] as const;
     case OfficeTitleLevel.CITY_CHAPLAIN:
     case OfficeTitleLevel.MUNICIPAL_CHAPLAIN:
     case OfficeTitleLevel.CITY_MUNICIPAL_DEPUTY_CHAPLAIN:
-      return "cityMunicipality";
+      return ["region", "province", "cityMunicipality"] as const;
     case OfficeTitleLevel.BARANGAY_CHAPLAIN:
     case OfficeTitleLevel.BARANGAY_DEPUTY_CHAPLAIN:
-      return "barangay";
+      return ["region", "province", "cityMunicipality", "barangay"] as const;
     default:
-      return null;
-  }
-};
-
-const getJurisdictionLabel = (field: string | null) => {
-  switch (field) {
-    case "department":
-      return "Department";
-    case "region":
-      return "Region";
-    case "province":
-      return "Province";
-    case "cityMunicipality":
-      return "City / Municipality";
-    case "barangay":
-      return "Barangay";
-    default:
-      return null;
+      return [] as const;
   }
 };
 
@@ -176,6 +188,16 @@ export function MemberOfficeAssignmentDialog({
   const [officePickerOpen, setOfficePickerOpen] = useState(false);
   const [replacePickerOpen, setReplacePickerOpen] = useState(false);
   const [form, setForm] = useState<AssignmentFormState>(emptyForm);
+  const [jurisdictionSelection, setJurisdictionSelection] =
+    useState<JurisdictionSelection>(emptyJurisdictionSelection);
+  const [regions, setRegions] = useState<PsgcLocation[]>([]);
+  const [provinces, setProvinces] = useState<PsgcLocation[]>([]);
+  const [citiesMunicipalities, setCitiesMunicipalities] = useState<
+    PsgcLocation[]
+  >([]);
+  const [barangays, setBarangays] = useState<PsgcLocation[]>([]);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [deactivateTarget, setDeactivateTarget] =
     useState<OfficerAssignmentResource | null>(null);
   const [replaceTarget, setReplaceTarget] =
@@ -240,19 +262,15 @@ export function MemberOfficeAssignmentDialog({
   );
 
   const assignments = memberAssignmentsQuery.data ?? [];
-  const requiredJurisdictionField = getRequiredJurisdictionField(
+  const requiredJurisdictionFields = getRequiredJurisdictionFields(
     selectedOfficeTitle?.level ?? null,
-  );
-  const requiredJurisdictionLabel = getJurisdictionLabel(
-    requiredJurisdictionField,
   );
   const isAssigning = createOfficerAssignmentMutation.isPending;
   const isInvalid =
     !member ||
     !form.officeTitleId ||
     Boolean(
-      requiredJurisdictionField &&
-      !form[requiredJurisdictionField as keyof AssignmentFormState]?.trim(),
+      requiredJurisdictionFields.some((field) => !form[field]?.trim()),
     );
 
   const setField = <K extends keyof AssignmentFormState>(
@@ -262,10 +280,191 @@ export function MemberOfficeAssignmentDialog({
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const loadRegions = async () => {
+    setIsLoadingLocations(true);
+    setLocationError(null);
+    try {
+      setRegions(await getPsgcRegions());
+    } catch (error) {
+      setLocationError(
+        error instanceof Error
+          ? error.message
+          : "PSGC location data could not be loaded.",
+      );
+    } finally {
+      setIsLoadingLocations(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open || requiredJurisdictionFields.length === 0 || regions.length > 0) {
+      return;
+    }
+    void loadRegions();
+  }, [open, regions.length, requiredJurisdictionFields.length]);
+
+  useEffect(() => {
+    if (!jurisdictionSelection.regionCode) return;
+
+    let isCurrent = true;
+    setIsLoadingLocations(true);
+    setLocationError(null);
+    void getPsgcProvinces(jurisdictionSelection.regionCode)
+      .then((items) => {
+        if (isCurrent) setProvinces(items);
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setLocationError(
+            error instanceof Error
+              ? error.message
+              : "PSGC location data could not be loaded.",
+          );
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingLocations(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [jurisdictionSelection.regionCode]);
+
+  useEffect(() => {
+    if (!jurisdictionSelection.provinceCode) return;
+
+    let isCurrent = true;
+    setIsLoadingLocations(true);
+    setLocationError(null);
+    void getPsgcCitiesMunicipalities(jurisdictionSelection.provinceCode)
+      .then((items) => {
+        if (isCurrent) setCitiesMunicipalities(items);
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setLocationError(
+            error instanceof Error
+              ? error.message
+              : "PSGC location data could not be loaded.",
+          );
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingLocations(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [jurisdictionSelection.provinceCode]);
+
+  useEffect(() => {
+    if (!jurisdictionSelection.cityMunicipalityCode) return;
+
+    let isCurrent = true;
+    setIsLoadingLocations(true);
+    setLocationError(null);
+    void getPsgcBarangays(jurisdictionSelection.cityMunicipalityCode)
+      .then((items) => {
+        if (isCurrent) setBarangays(items);
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setLocationError(
+            error instanceof Error
+              ? error.message
+              : "PSGC location data could not be loaded.",
+          );
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingLocations(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [jurisdictionSelection.cityMunicipalityCode]);
+
+  const selectRegion = (regionCode: string) => {
+    const region = regions.find((item) => item.code === regionCode);
+    if (!region) return;
+
+    setJurisdictionSelection({
+      regionCode,
+      provinceCode: "",
+      cityMunicipalityCode: "",
+      barangayCode: "",
+    });
+    setProvinces([]);
+    setCitiesMunicipalities([]);
+    setBarangays([]);
+    setForm((current) => ({
+      ...current,
+      region: getPsgcRegionLabel(region),
+      province: "",
+      cityMunicipality: "",
+      barangay: "",
+    }));
+  };
+
+  const selectProvince = (provinceCode: string) => {
+    const province = provinces.find((item) => item.code === provinceCode);
+    if (!province) return;
+
+    setJurisdictionSelection((current) => ({
+      ...current,
+      provinceCode,
+      cityMunicipalityCode: "",
+      barangayCode: "",
+    }));
+    setCitiesMunicipalities([]);
+    setBarangays([]);
+    setForm((current) => ({
+      ...current,
+      province: province.name,
+      cityMunicipality: "",
+      barangay: "",
+    }));
+  };
+
+  const selectCityMunicipality = (cityMunicipalityCode: string) => {
+    const cityMunicipality = citiesMunicipalities.find(
+      (item) => item.code === cityMunicipalityCode,
+    );
+    if (!cityMunicipality) return;
+
+    setJurisdictionSelection((current) => ({
+      ...current,
+      cityMunicipalityCode,
+      barangayCode: "",
+    }));
+    setBarangays([]);
+    setForm((current) => ({
+      ...current,
+      cityMunicipality: cityMunicipality.name,
+      barangay: "",
+    }));
+  };
+
+  const selectBarangay = (barangayCode: string) => {
+    const barangay = barangays.find((item) => item.code === barangayCode);
+    if (!barangay) return;
+
+    setJurisdictionSelection((current) => ({ ...current, barangayCode }));
+    setField("barangay", barangay.name);
+  };
+
   const resetState = () => {
     setOfficePickerOpen(false);
     setReplacePickerOpen(false);
     setForm(emptyForm);
+    setJurisdictionSelection(emptyJurisdictionSelection);
+    setProvinces([]);
+    setCitiesMunicipalities([]);
+    setBarangays([]);
+    setLocationError(null);
     setDeactivateTarget(null);
     setReplaceTarget(null);
     setReplacementMemberId("");
@@ -434,7 +633,17 @@ export function MemberOfficeAssignmentDialog({
                                 key={officeTitle.id}
                                 value={`${officeTitle.name} ${officeTitle.level}`}
                                 onSelect={() => {
-                                  setField("officeTitleId", officeTitle.id);
+                                  setForm({
+                                    ...emptyForm,
+                                    officeTitleId: officeTitle.id,
+                                  });
+                                  setJurisdictionSelection(
+                                    emptyJurisdictionSelection,
+                                  );
+                                  setProvinces([]);
+                                  setCitiesMunicipalities([]);
+                                  setBarangays([]);
+                                  setLocationError(null);
                                   setOfficePickerOpen(false);
                                 }}
                               >
@@ -491,23 +700,149 @@ export function MemberOfficeAssignmentDialog({
                     }
                   />
                 </div>
-                {requiredJurisdictionField && requiredJurisdictionLabel ? (
+                {requiredJurisdictionFields.includes("region") ? (
                   <div className="space-y-2">
-                    <Label htmlFor={`assignment-${requiredJurisdictionField}`}>
-                      {requiredJurisdictionLabel}
-                    </Label>
-                    <Input
-                      id={`assignment-${requiredJurisdictionField}`}
-                      value={form[requiredJurisdictionField]}
-                      onChange={(event) =>
-                        setField(
-                          requiredJurisdictionField,
-                          event.target
-                            .value as AssignmentFormState[keyof AssignmentFormState],
-                        )
+                    <Label htmlFor="assignment-region">Region</Label>
+                    <Select
+                      value={jurisdictionSelection.regionCode}
+                      onValueChange={selectRegion}
+                      disabled={isLoadingLocations && regions.length === 0}
+                    >
+                      <SelectTrigger id="assignment-region" className="w-full">
+                        <SelectValue
+                          placeholder={
+                            isLoadingLocations && regions.length === 0
+                              ? "Loading regions..."
+                              : "Select region"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {regions.map((region) => (
+                          <SelectItem key={region.code} value={region.code}>
+                            {getPsgcRegionLabel(region)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+
+                {requiredJurisdictionFields.includes("province") ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="assignment-province">Province</Label>
+                    <Select
+                      value={jurisdictionSelection.provinceCode}
+                      onValueChange={selectProvince}
+                      disabled={
+                        !jurisdictionSelection.regionCode || isLoadingLocations
                       }
-                      placeholder={`Enter ${requiredJurisdictionLabel.toLowerCase()}`}
-                    />
+                    >
+                      <SelectTrigger id="assignment-province" className="w-full">
+                        <SelectValue
+                          placeholder={
+                            !jurisdictionSelection.regionCode
+                              ? "Select a region first"
+                              : isLoadingLocations
+                                ? "Loading provinces..."
+                                : "Select province"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {provinces.map((province) => (
+                          <SelectItem key={province.code} value={province.code}>
+                            {province.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+
+                {requiredJurisdictionFields.includes("cityMunicipality") ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="assignment-city-municipality">
+                      City / Municipality
+                    </Label>
+                    <Select
+                      value={jurisdictionSelection.cityMunicipalityCode}
+                      onValueChange={selectCityMunicipality}
+                      disabled={
+                        !jurisdictionSelection.provinceCode || isLoadingLocations
+                      }
+                    >
+                      <SelectTrigger
+                        id="assignment-city-municipality"
+                        className="w-full"
+                      >
+                        <SelectValue
+                          placeholder={
+                            !jurisdictionSelection.provinceCode
+                              ? "Select a province first"
+                              : isLoadingLocations
+                                ? "Loading cities and municipalities..."
+                                : "Select city / municipality"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {citiesMunicipalities.map((cityMunicipality) => (
+                          <SelectItem
+                            key={cityMunicipality.code}
+                            value={cityMunicipality.code}
+                          >
+                            {cityMunicipality.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+
+                {requiredJurisdictionFields.includes("barangay") ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="assignment-barangay">Barangay</Label>
+                    <Select
+                      value={jurisdictionSelection.barangayCode}
+                      onValueChange={selectBarangay}
+                      disabled={
+                        !jurisdictionSelection.cityMunicipalityCode ||
+                        isLoadingLocations
+                      }
+                    >
+                      <SelectTrigger id="assignment-barangay" className="w-full">
+                        <SelectValue
+                          placeholder={
+                            !jurisdictionSelection.cityMunicipalityCode
+                              ? "Select a city / municipality first"
+                              : isLoadingLocations
+                                ? "Loading barangays..."
+                                : "Select barangay"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {barangays.map((barangay) => (
+                          <SelectItem key={barangay.code} value={barangay.code}>
+                            {barangay.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+                {locationError ? (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                    <span>{locationError}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void loadRegions()}
+                    >
+                      Retry
+                    </Button>
                   </div>
                 ) : null}
               </div>

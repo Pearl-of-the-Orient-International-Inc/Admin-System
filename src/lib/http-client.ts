@@ -85,8 +85,8 @@ export function toApiError(error: unknown): ApiErrorResponse {
     return {
       ...data,
       message:
-        data.message ||
         issueMessage ||
+        data.message ||
         rawErrorMessage ||
         error.message ||
         "Request failed",

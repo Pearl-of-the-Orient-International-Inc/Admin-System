@@ -5,9 +5,11 @@ import {
   Archive,
   Copy,
   Edit,
+  ShieldX,
   FileBadge2,
   MoreHorizontal,
   RotateCcw,
+  Send,
   Trash2,
 } from "lucide-react";
 
@@ -32,6 +34,8 @@ type MemoAnnouncementsDataTableProps = {
   onCopyId: (record: MemoAnnouncementRecord) => void;
   onArchive: (record: MemoAnnouncementRecord) => void;
   onRestore: (record: MemoAnnouncementRecord) => void;
+  onReject: (record: MemoAnnouncementRecord) => void;
+  onApprove: (record: MemoAnnouncementRecord) => void;
   onDelete: (record: MemoAnnouncementRecord) => void;
   isActionBusy: boolean;
 };
@@ -111,6 +115,8 @@ export function MemoAnnouncementsDataTable({
   onCopyId,
   onArchive,
   onRestore,
+  onReject,
+  onApprove,
   onDelete,
   isActionBusy,
 }: MemoAnnouncementsDataTableProps) {
@@ -145,6 +151,25 @@ export function MemoAnnouncementsDataTable({
                 <Edit className="size-4" />
                 Edit memo
               </DropdownMenuItem>
+              {memo.author?.role === "OFFICER" && memo.status === "DRAFT" ? (
+                <>
+                  <DropdownMenuItem
+                    disabled={isActionBusy}
+                    onClick={() => onApprove(memo)}
+                  >
+                    <Send className="size-4" />
+                    Approve & publish
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={isActionBusy}
+                    onClick={() => onReject(memo)}
+                  >
+                    <ShieldX className="size-4" />
+                    Reject officer draft
+                  </DropdownMenuItem>
+                </>
+              ) : null}
               <DropdownMenuSeparator />
               {memo.status === "ARCHIVED" ? (
                 <DropdownMenuItem
