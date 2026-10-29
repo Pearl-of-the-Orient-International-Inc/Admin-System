@@ -99,6 +99,12 @@ type AssignmentFormState = {
   startDate: string;
 };
 
+type JurisdictionField =
+  | "region"
+  | "province"
+  | "cityMunicipality"
+  | "barangay";
+
 const emptyForm: AssignmentFormState = {
   officeTitleId: "",
   department: "",
@@ -146,25 +152,27 @@ const buildFullName = (member: AdminMember) =>
     .filter(Boolean)
     .join(" ");
 
-const getRequiredJurisdictionFields = (level?: string | null) => {
+const getRequiredJurisdictionFields = (
+  level?: string | null,
+): JurisdictionField[] => {
   switch (level) {
     case OfficeTitleLevel.NATIONAL_CHAPLAIN_DIRECTOR:
       return [];
     case OfficeTitleLevel.REGIONAL_CHAPLAIN_DIRECTOR:
     case OfficeTitleLevel.REGIONAL_DEPUTY_CHAPLAIN_DIRECTOR:
-      return ["region"] as const;
+      return ["region"];
     case OfficeTitleLevel.PROVINCIAL_CHAPLAIN_DIRECTOR:
     case OfficeTitleLevel.PROVINCIAL_DEPUTY_CHAPLAIN_DIRECTOR:
-      return ["region", "province"] as const;
+      return ["region", "province"];
     case OfficeTitleLevel.CITY_CHAPLAIN:
     case OfficeTitleLevel.MUNICIPAL_CHAPLAIN:
     case OfficeTitleLevel.CITY_MUNICIPAL_DEPUTY_CHAPLAIN:
-      return ["region", "province", "cityMunicipality"] as const;
+      return ["region", "province", "cityMunicipality"];
     case OfficeTitleLevel.BARANGAY_CHAPLAIN:
     case OfficeTitleLevel.BARANGAY_DEPUTY_CHAPLAIN:
-      return ["region", "province", "cityMunicipality", "barangay"] as const;
+      return ["region", "province", "cityMunicipality", "barangay"];
     default:
-      return [] as const;
+      return [];
   }
 };
 
