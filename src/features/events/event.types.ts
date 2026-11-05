@@ -76,7 +76,13 @@ export interface EventAttendeeResource {
   id: string;
   memberId: string;
   accessLevel: "FULL_ACCESS";
-  inviteStatus: "INVITED" | "ACCEPTED";
+  inviteStatus:
+    | "INVITED"
+    | "ACCEPTED"
+    | "PENDING_APPROVAL"
+    | "APPROVED"
+    | "REJECTED"
+    | "ATTENDED";
   invitedAt: string;
   updatedAt: string;
   member: {
@@ -86,6 +92,13 @@ export interface EventAttendeeResource {
     avatar: string | null;
     userId: string;
   };
+}
+
+export type ReviewEventAttendeeStatus = "APPROVED" | "REJECTED" | "ATTENDED";
+
+export interface EventCertificateEligibleAttendee {
+  id: string;
+  memberId: string;
 }
 
 export interface EventAttendeesResponse {

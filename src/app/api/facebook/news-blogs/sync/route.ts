@@ -30,11 +30,37 @@ const FACEBOOK_SYNC_PUBLIC_POST_BASE_URL =
   process.env.FACEBOOK_SYNC_PUBLIC_POST_BASE_URL;
 
 export async function POST(request: Request) {
-  if (!FACEBOOK_PAGE_ID || !FACEBOOK_PAGE_ACCESS_TOKEN) {
+  const authorization = request.headers.get("authorization");
+  const apiBaseUrl =
+    process.env.NODE_ENV === "development"
+      ? process.env.NEXT_PUBLIC_API_BASE_URL_DEV
+      : process.env.NEXT_PUBLIC_API_BASE_URL_PROD;
+  const databaseCredentials =
+    apiBaseUrl && authorization
+      ? await fetch(
+          `${apiBaseUrl}/news-blogs/facebook-page-configuration/sync-credentials`,
+          { headers: { Authorization: authorization }, cache: "no-store" },
+        )
+          .then(async (response) =>
+            response.ok
+              ? (
+                  (await response.json()) as {
+                    data: { pageId: string; accessToken: string };
+                  }
+                ).data
+              : null,
+          )
+          .catch(() => null)
+      : null;
+  const pageId = databaseCredentials?.pageId ?? FACEBOOK_PAGE_ID;
+  const accessToken =
+    databaseCredentials?.accessToken ?? FACEBOOK_PAGE_ACCESS_TOKEN;
+
+  if (!pageId || !accessToken) {
     return NextResponse.json(
       {
         message:
-          "Facebook Page sync is not configured yet. Add FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN to the admin environment.",
+          "Facebook Page sync is not configured yet. Save the Page ID and access token in Facebook settings.",
       },
       { status: 503 },
     );
@@ -70,7 +96,10 @@ export async function POST(request: Request) {
       });
     }
 
-    const response = await deleteFacebookPost(body.newsBlog.facebookPostId);
+    const response = await deleteFacebookPost(
+      body.newsBlog.facebookPostId,
+      accessToken,
+    );
     const payload = (await response.json().catch(() => null)) as {
       success?: boolean;
       error?: {
@@ -103,7 +132,10 @@ export async function POST(request: Request) {
       });
     }
 
-    const response = await hideFacebookPost(body.newsBlog.facebookPostId);
+    const response = await hideFacebookPost(
+      body.newsBlog.facebookPostId,
+      accessToken,
+    );
     const payload = (await response.json().catch(() => null)) as {
       success?: boolean;
       error?: {
@@ -135,6 +167,7 @@ export async function POST(request: Request) {
     const response = await updateFacebookPost(
       body.newsBlog.facebookPostId,
       message,
+      accessToken,
     );
 
     const payload = (await response.json().catch(() => null)) as {
@@ -162,10 +195,13 @@ export async function POST(request: Request) {
     });
   }
 
-  const imageMediaIds = await uploadImageMediaToFacebook(body.newsBlog.media);
+  const imageMediaIds = await uploadImageMediaToFacebook(body.newsBlog.media, {
+    pageId,
+    accessToken,
+  });
   const params = new URLSearchParams({
     message,
-    access_token: FACEBOOK_PAGE_ACCESS_TOKEN,
+    access_token: accessToken,
   });
 
   if (imageMediaIds.length > 0) {
@@ -182,7 +218,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const response = await postToFacebookFeed(params);
+  const response = await postToFacebookFeed(params, pageId);
 
   const payload = (await response.json().catch(() => null)) as {
     id?: string;
@@ -210,6 +246,7 @@ export async function POST(request: Request) {
 
 async function uploadImageMediaToFacebook(
   media: SyncNewsBlogRequestBody["newsBlog"]["media"],
+  credentials: { pageId: string; accessToken: string },
 ) {
   const imageItems = media
     .filter((item) => item.kind === "image" && item.previewUrl.trim())
@@ -226,11 +263,11 @@ async function uploadImageMediaToFacebook(
       url: item.previewUrl,
       published: "false",
       temporary: "true",
-      access_token: FACEBOOK_PAGE_ACCESS_TOKEN!,
+      access_token: credentials.accessToken,
     });
 
     const response = await fetch(
-      `https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${FACEBOOK_PAGE_ID}/photos`,
+      `https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${credentials.pageId}/photos`,
       {
         method: "POST",
         headers: {
@@ -261,9 +298,9 @@ async function uploadImageMediaToFacebook(
   return uploadedMediaIds;
 }
 
-async function postToFacebookFeed(params: URLSearchParams) {
+async function postToFacebookFeed(params: URLSearchParams, pageId: string) {
   return fetch(
-    `https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${FACEBOOK_PAGE_ID}/feed`,
+    `https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${pageId}/feed`,
     {
       method: "POST",
       headers: {
@@ -275,11 +312,15 @@ async function postToFacebookFeed(params: URLSearchParams) {
   );
 }
 
-async function updateFacebookPost(postId: string, message: string) {
+async function updateFacebookPost(
+  postId: string,
+  message: string,
+  accessToken: string,
+) {
   const params = new URLSearchParams({
     message,
     is_hidden: "false",
-    access_token: FACEBOOK_PAGE_ACCESS_TOKEN!,
+    access_token: accessToken,
   });
 
   return fetch(
@@ -295,10 +336,10 @@ async function updateFacebookPost(postId: string, message: string) {
   );
 }
 
-async function hideFacebookPost(postId: string) {
+async function hideFacebookPost(postId: string, accessToken: string) {
   const params = new URLSearchParams({
     is_hidden: "true",
-    access_token: FACEBOOK_PAGE_ACCESS_TOKEN!,
+    access_token: accessToken,
   });
 
   return fetch(
@@ -314,9 +355,9 @@ async function hideFacebookPost(postId: string) {
   );
 }
 
-async function deleteFacebookPost(postId: string) {
+async function deleteFacebookPost(postId: string, accessToken: string) {
   const params = new URLSearchParams({
-    access_token: FACEBOOK_PAGE_ACCESS_TOKEN!,
+    access_token: accessToken,
   });
 
   return fetch(

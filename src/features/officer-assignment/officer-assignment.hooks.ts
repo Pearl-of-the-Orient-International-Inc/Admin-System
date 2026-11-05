@@ -58,6 +58,21 @@ export const useDeactivateOfficerAssignmentMutation = () => {
   });
 };
 
+export const useUpdateOfficerAssignmentMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: officerAssignmentApi.updateOfficerAssignmentByMemberId,
+    onSuccess: async (_assignment, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["officer-assignments"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["officer-assignments", "member", variables.memberId],
+      });
+    },
+    meta: { feature: "officer-assignment.update" },
+  });
+};
+
 export const useReplaceOfficerAssignmentMutation = () => {
   const queryClient = useQueryClient();
 

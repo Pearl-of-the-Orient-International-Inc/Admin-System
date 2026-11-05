@@ -98,6 +98,20 @@ export const useInviteEventAttendeesMutation = () => {
   });
 };
 
+export const useReviewEventAttendeeMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: eventApi.reviewEventAttendee,
+    onSuccess: async (_attendees, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["events", "attendees", variables.eventId],
+      });
+    },
+    meta: { feature: "events.reviewAttendee" },
+  });
+};
+
 export const useUploadEventThumbnailMutation = () =>
   useMutation({
     mutationFn: uploadEventThumbnail,

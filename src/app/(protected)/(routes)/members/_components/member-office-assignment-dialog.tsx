@@ -6,6 +6,7 @@ import {
   Check,
   ChevronsUpDown,
   History,
+  Pencil,
   RefreshCcw,
   ShieldMinus,
 } from "lucide-react";
@@ -63,6 +64,7 @@ import {
   useDeactivateOfficerAssignmentMutation,
   useMemberOfficerAssignmentsQuery,
   useReplaceOfficerAssignmentMutation,
+  useUpdateOfficerAssignmentMutation,
 } from "@/features/officer-assignment/officer-assignment.hooks";
 import type { OfficerAssignmentResource } from "@/features/officer-assignment/officer-assignment.types";
 import { useToast } from "@/hooks/use-toast";
@@ -105,6 +107,16 @@ type JurisdictionField =
   | "cityMunicipality"
   | "barangay";
 
+type AssignmentCorrectionState = {
+  department: string;
+  region: string;
+  province: string;
+  cityMunicipality: string;
+  barangay: string;
+  startDate: string;
+  endDate: string;
+};
+
 const emptyForm: AssignmentFormState = {
   officeTitleId: "",
   department: "",
@@ -128,6 +140,9 @@ const emptyJurisdictionSelection: JurisdictionSelection = {
   cityMunicipalityCode: "",
   barangayCode: "",
 };
+
+const toDateInputValue = (value: string | null) =>
+  value ? new Date(value).toISOString().slice(0, 10) : "";
 
 const formatOfficeTitleLevel = (level: string) =>
   level
@@ -176,16 +191,21 @@ const getRequiredJurisdictionFields = (
   }
 };
 
-const formatJurisdiction = (assignment: OfficerAssignmentResource) =>
-  [
+const formatJurisdiction = (assignment: OfficerAssignmentResource) => {
+  const values = [
     assignment.department,
     assignment.region,
     assignment.province,
     assignment.cityMunicipality,
     assignment.barangay,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter(Boolean);
+
+  if (assignment.officeTitle.level === OfficeTitleLevel.NATIONAL_CHAPLAIN_DIRECTOR) {
+    return values.length ? `National jurisdiction · ${values.join(" · ")}` : "National jurisdiction";
+  }
+
+  return values.join(" · ");
+};
 
 export function MemberOfficeAssignmentDialog({
   open,
@@ -211,6 +231,8 @@ export function MemberOfficeAssignmentDialog({
   const [replaceTarget, setReplaceTarget] =
     useState<OfficerAssignmentResource | null>(null);
   const [replacementMemberId, setReplacementMemberId] = useState("");
+  const [editTarget, setEditTarget] = useState<OfficerAssignmentResource | null>(null);
+  const [editForm, setEditForm] = useState<AssignmentCorrectionState | null>(null);
 
   const officeTitlesQuery = useOfficeTitlesQuery({
     page: 1,
@@ -233,6 +255,7 @@ export function MemberOfficeAssignmentDialog({
     useDeactivateOfficerAssignmentMutation();
   const replaceOfficerAssignmentMutation =
     useReplaceOfficerAssignmentMutation();
+  const updateOfficerAssignmentMutation = useUpdateOfficerAssignmentMutation();
 
   const activeOfficeTitles = useMemo(
     () =>
@@ -272,6 +295,9 @@ export function MemberOfficeAssignmentDialog({
   const assignments = memberAssignmentsQuery.data ?? [];
   const requiredJurisdictionFields = getRequiredJurisdictionFields(
     selectedOfficeTitle?.level ?? null,
+  );
+  const editRequiredJurisdictionFields = getRequiredJurisdictionFields(
+    editTarget?.officeTitle.level ?? null,
   );
   const isAssigning = createOfficerAssignmentMutation.isPending;
   const isInvalid =
@@ -476,6 +502,8 @@ export function MemberOfficeAssignmentDialog({
     setDeactivateTarget(null);
     setReplaceTarget(null);
     setReplacementMemberId("");
+    setEditTarget(null);
+    setEditForm(null);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -575,6 +603,52 @@ export function MemberOfficeAssignmentDialog({
         title: "Replacement failed",
         description:
           apiError.message ?? "Unable to replace this office holder right now.",
+      });
+    }
+  };
+
+  const openEdit = (assignment: OfficerAssignmentResource) => {
+    setEditTarget(assignment);
+    setEditForm({
+      department: assignment.department ?? "",
+      region: assignment.region ?? "",
+      province: assignment.province ?? "",
+      cityMunicipality: assignment.cityMunicipality ?? "",
+      barangay: assignment.barangay ?? "",
+      startDate: toDateInputValue(assignment.startDate),
+      endDate: toDateInputValue(assignment.endDate),
+    });
+  };
+
+  const handleEdit = async () => {
+    if (!member || !editTarget || !editForm) return;
+    try {
+      await updateOfficerAssignmentMutation.mutateAsync({
+        memberId: member.memberId,
+        assignmentId: editTarget.id,
+        payload: {
+          department: editForm.department || null,
+          region: editForm.region || null,
+          province: editForm.province || null,
+          cityMunicipality: editForm.cityMunicipality || null,
+          barangay: editForm.barangay || null,
+          startDate: editForm.startDate ? new Date(editForm.startDate).toISOString() : undefined,
+          endDate: editForm.endDate ? new Date(editForm.endDate).toISOString() : null,
+        },
+      });
+      toast({
+        variant: "success",
+        title: "Assignment corrected",
+        description: "The office assignment details have been updated.",
+      });
+      setEditTarget(null);
+      setEditForm(null);
+    } catch (error: unknown) {
+      const apiError = toApiError(error);
+      toast({
+        variant: "error",
+        title: "Unable to update assignment",
+        description: apiError.message ?? "Please check the assignment details and try again.",
       });
     }
   };
@@ -929,8 +1003,23 @@ export function MemberOfficeAssignmentDialog({
                                   </Badge>
                                 </div>
                               </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() => openEdit(assignment)}
+                                    >
+                                      <Pencil className="size-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Correct assignment details
+                                  </TooltipContent>
+                                </Tooltip>
                               {assignment.isActive ? (
-                                <div className="flex flex-wrap gap-2">
+                                <>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
@@ -962,8 +1051,9 @@ export function MemberOfficeAssignmentDialog({
                                     </TooltipTrigger>
                                     <TooltipContent>Remove office title</TooltipContent>
                                   </Tooltip>
-                                </div>
+                                </>
                               ) : null}
+                              </div>
                             </div>
 
                             <div className="space-y-1 text-sm text-muted-foreground">
@@ -1143,6 +1233,91 @@ export function MemberOfficeAssignmentDialog({
               {replaceOfficerAssignmentMutation.isPending
                 ? "Replacing..."
                 : "Replace holder"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(editTarget)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setEditTarget(null);
+            setEditForm(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl!">
+          <DialogHeader>
+            <DialogTitle>Correct Office Assignment</DialogTitle>
+            <DialogDescription>
+              Update a spelling, jurisdiction, or assignment date without changing the office holder or creating a duplicate record.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editTarget && editForm ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2 rounded-lg border bg-muted/30 px-4 py-3">
+                <p className="font-medium">{editTarget.officeTitle.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {editTarget.officeTitle.level === OfficeTitleLevel.NATIONAL_CHAPLAIN_DIRECTOR
+                    ? "National jurisdiction — this office covers the organization nationwide."
+                    : "Correct the saved jurisdiction values below when needed."}
+                </p>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="edit-assignment-department">Department / office note (optional)</Label>
+                <Input
+                  id="edit-assignment-department"
+                  value={editForm.department}
+                  placeholder="For example: Operations"
+                  onChange={(event) => setEditForm((current) => current ? { ...current, department: event.target.value } : current)}
+                />
+              </div>
+
+              {editRequiredJurisdictionFields.includes("region") ? (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-assignment-region">Region</Label>
+                  <Input id="edit-assignment-region" value={editForm.region} onChange={(event) => setEditForm((current) => current ? { ...current, region: event.target.value } : current)} />
+                </div>
+              ) : null}
+              {editRequiredJurisdictionFields.includes("province") ? (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-assignment-province">Province</Label>
+                  <Input id="edit-assignment-province" value={editForm.province} onChange={(event) => setEditForm((current) => current ? { ...current, province: event.target.value } : current)} />
+                </div>
+              ) : null}
+              {editRequiredJurisdictionFields.includes("cityMunicipality") ? (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-assignment-city">City / municipality</Label>
+                  <Input id="edit-assignment-city" value={editForm.cityMunicipality} onChange={(event) => setEditForm((current) => current ? { ...current, cityMunicipality: event.target.value } : current)} />
+                </div>
+              ) : null}
+              {editRequiredJurisdictionFields.includes("barangay") ? (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-assignment-barangay">Barangay</Label>
+                  <Input id="edit-assignment-barangay" value={editForm.barangay} onChange={(event) => setEditForm((current) => current ? { ...current, barangay: event.target.value } : current)} />
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-assignment-start">Start date</Label>
+                <Input id="edit-assignment-start" type="date" value={editForm.startDate} onChange={(event) => setEditForm((current) => current ? { ...current, startDate: event.target.value } : current)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-assignment-end">End date (optional)</Label>
+                <Input id="edit-assignment-end" type="date" value={editForm.endDate} onChange={(event) => setEditForm((current) => current ? { ...current, endDate: event.target.value } : current)} />
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setEditTarget(null); setEditForm(null); }}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleEdit()} disabled={updateOfficerAssignmentMutation.isPending}>
+              {updateOfficerAssignmentMutation.isPending ? "Saving..." : "Save corrections"}
             </Button>
           </DialogFooter>
         </DialogContent>

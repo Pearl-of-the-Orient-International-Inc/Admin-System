@@ -5,7 +5,6 @@ import {
   Check,
   ChevronsUpDownIcon,
   Download,
-  Save,
   UserPlus,
   X,
 } from "lucide-react";
@@ -71,7 +70,6 @@ type Props = {
   uploadedLayouts: UploadedCertificateLayout[];
   selectedLayoutId: string;
   onSelectLayout: (layoutId: string) => void;
-  onPrepareBatch: () => void;
   onDownloadBatch: () => void;
   isInvalid: boolean;
   isExportingPdf: boolean;
@@ -95,7 +93,6 @@ export function CertificateBatchSheet({
   uploadedLayouts,
   selectedLayoutId,
   onSelectLayout,
-  onPrepareBatch,
   onDownloadBatch,
   isInvalid,
   isExportingPdf,
@@ -329,19 +326,16 @@ export function CertificateBatchSheet({
               </CardContent>
             </Card>
 
-            <Button className="mr-2" onClick={onPrepareBatch} disabled={isInvalid}>
-              <Save className="size-4" />
-              Prepare certificate batch
-            </Button>
-
             <Button
               type="button"
-              variant="outline"
               onClick={onDownloadBatch}
               disabled={isInvalid || isExportingPdf}
+              className="w-full"
             >
               <Download className="size-4" />
-              {isExportingPdf ? "Generating PDF..." : "Download batch PDF"}
+              {isExportingPdf
+                ? "Generating and publishing..."
+                : "Generate, publish & download batch PDF"}
             </Button>
           </div>
 

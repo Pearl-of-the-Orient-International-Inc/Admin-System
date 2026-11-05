@@ -13,6 +13,16 @@ export type ReplaceOfficerAssignmentRequest = {
   startDate?: string;
 };
 
+export type UpdateOfficerAssignmentRequest = {
+  department?: string | null;
+  region?: string | null;
+  province?: string | null;
+  cityMunicipality?: string | null;
+  barangay?: string | null;
+  startDate?: string;
+  endDate?: string | null;
+};
+
 export type OfficerAssignmentResource = {
   id: string;
   memberId: string;

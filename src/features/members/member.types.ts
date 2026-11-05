@@ -112,3 +112,14 @@ export type MemberCredentialDocumentResponse = {
   message: string;
   data: MemberCredentialDocument;
 };
+
+export type CreateMemberCertificateByAdminRequest = {
+  memberId: string;
+  type: MemberCredentialDocumentType;
+  title: string;
+  issuer: string;
+  referenceNumber: string;
+  certificateUrl: string;
+  issuedAt: string;
+  expiresAt?: string | null;
+};

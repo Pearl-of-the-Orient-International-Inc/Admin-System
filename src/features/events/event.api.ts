@@ -3,9 +3,11 @@ import type {
   CreateEventRequest,
   EventAttendeesResponse,
   EventEnvelopeResponse,
+  EventAttendeeResource,
   EventListResponse,
   EventQueryParams,
   InviteEventAttendeesRequest,
+  ReviewEventAttendeeStatus,
   UpdateEventRequest,
 } from "./event.types";
 
@@ -75,4 +77,33 @@ export async function inviteEventAttendees({
     { memberIds },
   );
   return data.data;
+}
+
+export async function reviewEventAttendee({
+  eventId,
+  attendeeId,
+  status,
+}: {
+  eventId: string;
+  attendeeId: string;
+  status: ReviewEventAttendeeStatus;
+}) {
+  const { data } = await api.patch<{
+    code: string;
+    message: string;
+    data: EventAttendeeResource;
+  }>(
+    `/events/${encodeURIComponent(eventId)}/attendees/${encodeURIComponent(attendeeId)}/status`,
+    { status },
+  );
+  return data.data;
+}
+
+export async function getEventCertificateEligibleAttendees(eventId: string) {
+  const { data } = await api.get<{
+    code: string;
+    message: string;
+    data: Array<{ id: string; memberId: string }>;
+  }>(`/events/${encodeURIComponent(eventId)}/certificate-eligible-attendees`);
+  return data;
 }

@@ -1,4 +1,5 @@
 import { api } from "@/lib/http-client";
+import { authStore } from "@/lib/auth-store";
 import type {
   CreateNewsBlogRequest,
   NewsBlogEnvelopeResponse,
@@ -54,6 +55,9 @@ export async function syncNewsBlogToFacebook({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(authStore.getAccessToken()
+        ? { Authorization: `Bearer ${authStore.getAccessToken()}` }
+        : {}),
     },
     body: JSON.stringify({
       action,

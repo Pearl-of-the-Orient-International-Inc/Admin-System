@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
   CalendarDays,
+  Check,
   ChevronRight,
   Clock3,
   Copy,
@@ -15,10 +16,15 @@ import {
   ShieldCheck,
   Tag,
   Video,
+  X,
 } from "lucide-react";
 
 import { EventStatus, EventType, EventVisibility } from "@/enums";
-import { useEventAttendeesQuery } from "@/features/events/event.hooks";
+import {
+  useEventAttendeesQuery,
+  useReviewEventAttendeeMutation,
+} from "@/features/events/event.hooks";
+import type { ReviewEventAttendeeStatus } from "@/features/events/event.types";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -124,6 +130,7 @@ export function EventDetailsSheet({
     [event],
   );
   const attendeesQuery = useEventAttendeesQuery(event?.id ?? "", open && Boolean(event));
+  const reviewAttendeeMutation = useReviewEventAttendeeMutation();
   const attendeeTooltipItems = useMemo(
     () =>
       (attendeesQuery.data ?? []).slice(0, 6).map((attendee, index) => ({
@@ -139,12 +146,57 @@ export function EventDetailsSheet({
     .slice(0, 2)
     .map((attendee) => attendee.member.fullName)
     .join(", ");
+  const pendingAttendees = (attendeesQuery.data ?? []).filter(
+    (attendee) => attendee.inviteStatus === "PENDING_APPROVAL",
+  );
+  const approvedAttendees = (attendeesQuery.data ?? []).filter(
+    (attendee) => attendee.inviteStatus === "APPROVED",
+  );
+  const attendedCount = (attendeesQuery.data ?? []).filter(
+    (attendee) => attendee.inviteStatus === "ATTENDED",
+  ).length;
+
+  const handleReviewAttendee = async (
+    attendeeId: string,
+    nextStatus: ReviewEventAttendeeStatus,
+  ) => {
+    if (!event) return;
+    try {
+      await reviewAttendeeMutation.mutateAsync({
+        eventId: event.id,
+        attendeeId,
+        status: nextStatus,
+      });
+      toast({
+        title: "Registration updated",
+        description:
+          nextStatus === "APPROVED"
+            ? "The member can now officially join this event."
+            : nextStatus === "REJECTED"
+              ? "The registration request was declined."
+              : "Attendance is confirmed and this member is certificate-eligible.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Unable to update registration",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Please try again.",
+        variant: "error",
+      });
+    }
+  };
 
   const handleCopyLink = async () => {
     if (!event) return;
 
     try {
-      const url = `${window.location.origin}/events/${event.id}`;
+      const websiteOrigin =
+        process.env.NEXT_PUBLIC_WEBSITE_URL?.replace(/\/$/, "") ??
+        window.location.origin;
+      const url = `${websiteOrigin}/events/${event.id}`;
       await navigator.clipboard.writeText(url);
       toast({
         title: "Link copied",
@@ -174,6 +226,8 @@ export function EventDetailsSheet({
 
   const mapQuery = event.location || event.organizer;
   const showMap = event.type === EventType.ONSITE && Boolean(event.location);
+  const websiteOrigin = process.env.NEXT_PUBLIC_WEBSITE_URL?.replace(/\/$/, "");
+  const publicEventHref = `${websiteOrigin ?? ""}/events/${event.id}`;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -207,7 +261,7 @@ export function EventDetailsSheet({
                   size="sm"
                   className="rounded-xl bg-card"
                 >
-                  <Link href={`/events/${event.id}`}>
+                  <Link href={publicEventHref}>
                     Event Page
                     <ArrowUpRight className="size-4" />
                   </Link>
@@ -329,6 +383,86 @@ export function EventDetailsSheet({
                       ? "Event Cancelled"
                       : "Invite Attendees"}
                   </Button>
+
+                  <div className="space-y-3 rounded-2xl border bg-card p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">Member registrations</p>
+                        <p className="text-sm text-muted-foreground">
+                          Approve requests before the event. After it ends, mark
+                          approved members as attended for certificate eligibility.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0">
+                        {pendingAttendees.length} pending
+                      </Badge>
+                    </div>
+
+                    {pendingAttendees.length ? (
+                      <div className="space-y-2">
+                        {pendingAttendees.map((attendee) => (
+                          <div
+                            key={attendee.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-background p-3"
+                          >
+                            <div>
+                              <p className="font-medium">{attendee.member.fullName}</p>
+                              <p className="text-xs text-muted-foreground">{attendee.member.email}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={reviewAttendeeMutation.isPending}
+                                onClick={() => handleReviewAttendee(attendee.id, "REJECTED")}
+                              >
+                                <X className="size-3.5" /> Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={reviewAttendeeMutation.isPending}
+                                onClick={() => handleReviewAttendee(attendee.id, "APPROVED")}
+                              >
+                                <Check className="size-3.5" /> Approve
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {status === EventStatus.COMPLETED && approvedAttendees.length ? (
+                      <div className="space-y-2 border-t pt-3">
+                        <p className="text-sm font-medium">Confirm attendance</p>
+                        {approvedAttendees.map((attendee) => (
+                          <div
+                            key={attendee.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-background p-3"
+                          >
+                            <div>
+                              <p className="font-medium">{attendee.member.fullName}</p>
+                              <p className="text-xs text-muted-foreground">Approved — not yet certificate-eligible</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              disabled={reviewAttendeeMutation.isPending}
+                              onClick={() => handleReviewAttendee(attendee.id, "ATTENDED")}
+                            >
+                              <Check className="size-3.5" /> Mark attended
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {status === EventStatus.COMPLETED && attendedCount ? (
+                      <Button asChild variant="secondary" className="w-full">
+                        <Link href={`/members/certifications?eventId=${encodeURIComponent(event.id)}`}>
+                          Generate certificates for {attendedCount} attendee{attendedCount === 1 ? "" : "s"}
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </section>
 

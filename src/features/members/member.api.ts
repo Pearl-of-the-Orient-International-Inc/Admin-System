@@ -14,6 +14,7 @@ import type {
   ChangeMemberPasswordByAdminRequest,
   GenerateMemberCredentialDocumentRequest,
   MemberCredentialDocumentResponse,
+  CreateMemberCertificateByAdminRequest,
   UpdateMemberStatusRequest,
 } from "./member.types";
 
@@ -120,6 +121,17 @@ export async function generateMemberCredentialDocument({
     { type },
   );
   return data.data;
+}
+
+export async function createMemberCertificateByAdmin({
+  memberId,
+  ...payload
+}: CreateMemberCertificateByAdminRequest) {
+  const { data } = await api.post<{ code: string; message: string }>(
+    `/members/${encodeURIComponent(memberId)}/certificates`,
+    payload,
+  );
+  return data;
 }
 
 export async function deleteMember(memberId: string) {

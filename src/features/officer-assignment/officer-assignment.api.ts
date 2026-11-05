@@ -5,6 +5,7 @@ import type {
   OfficerAssignmentListResponse,
   OfficerAssignmentsQueryParams,
   ReplaceOfficerAssignmentRequest,
+  UpdateOfficerAssignmentRequest,
 } from "./officer-assignment.types";
 
 export async function createOfficerAssignmentByMemberId({
@@ -47,6 +48,22 @@ export async function deactivateOfficerAssignmentByMemberId({
     `/members/${encodeURIComponent(memberId)}/officer-assignments/${encodeURIComponent(
       assignmentId,
     )}/deactivate`,
+  );
+  return data.data;
+}
+
+export async function updateOfficerAssignmentByMemberId({
+  memberId,
+  assignmentId,
+  payload,
+}: {
+  memberId: string;
+  assignmentId: string;
+  payload: UpdateOfficerAssignmentRequest;
+}) {
+  const { data } = await api.put<OfficerAssignmentEnvelopeResponse>(
+    `/members/${encodeURIComponent(memberId)}/officer-assignments/${encodeURIComponent(assignmentId)}`,
+    payload,
   );
   return data.data;
 }

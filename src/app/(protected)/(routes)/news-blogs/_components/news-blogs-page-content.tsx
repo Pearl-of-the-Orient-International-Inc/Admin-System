@@ -17,6 +17,7 @@ import {
 import { useNewsBlogsQuery } from "@/features/news-blogs/news-blog.hooks";
 import type { NewsBlogRecord } from "@/features/news-blogs/news-blog.types";
 import { NewsBlogsDataTable } from "./news-blogs-data-table";
+import { FacebookPageSettingsDialog } from "./facebook-page-settings-dialog";
 
 export function NewsBlogsPageContent() {
   const newsBlogsQuery = useNewsBlogsQuery({ limit: 100, sortBy: "updatedAt" });
@@ -62,6 +63,7 @@ export function NewsBlogsPageContent() {
               published stories.
             </p>
           </div>
+          <FacebookPageSettingsDialog />
         </div>
 
         <PageEmptyState
@@ -87,12 +89,15 @@ export function NewsBlogsPageContent() {
           </p>
         </div>
 
-        <Button asChild>
-          <Link href="/news-blogs/create">
-            <Plus className="size-4" />
-            Create post
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <FacebookPageSettingsDialog />
+          <Button asChild>
+            <Link href="/news-blogs/create">
+              <Plus className="size-4" />
+              Create post
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="overflow-hidden bg-transparent">

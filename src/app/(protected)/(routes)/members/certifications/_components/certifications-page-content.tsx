@@ -10,8 +10,10 @@ import { SummaryStatCard } from "@/components/SummaryStatCard";
 import { Button } from "@/components/ui/button";
 import { MemberStatus } from "@/enums";
 import * as memberApi from "@/features/members/member.api";
+import { uploadGeneratedMemberCertificate } from "@/features/members/member-certificate-upload.api";
 import { useMembersQuery } from "@/features/members/member.hooks";
 import { useToast } from "@/hooks/use-toast";
+import { getEventCertificateEligibleAttendees } from "@/features/events/event.api";
 import { generateCertificateBatchPdf } from "@/lib/certificate";
 
 import { CertificateBatchSheet } from "./certificate-batch-sheet";
@@ -52,6 +54,7 @@ const DEFAULT_CODE_PLACEMENT: CertificateCodePlacement = {
 };
 
 type CertificateCredentialAssets = {
+  documentNumber: string;
   qrCodeDataUrl: string | null;
   barcodeDataUrl: string | null;
 };
@@ -60,7 +63,7 @@ function isDefinedMember<T>(member: T | undefined): member is T {
   return member !== undefined;
 }
 
-export function CertificationsPageContent() {
+export function CertificationsPageContent({ initialEventId }: { initialEventId?: string }) {
   const { toast } = useToast();
   const membersQuery = useMembersQuery({
     // A certificate batch can include any approved member. The API defaults to
@@ -82,6 +85,37 @@ export function CertificationsPageContent() {
   const [editingLayoutId, setEditingLayoutId] = useState<string>("");
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [previewItems, setPreviewItems] = useState<CertificatePreviewItem[]>([]);
+
+  useEffect(() => {
+    if (!initialEventId) return;
+
+    let active = true;
+    void getEventCertificateEligibleAttendees(initialEventId)
+      .then((response) => {
+        if (!active) return;
+        const memberIds = response.data.map((attendee) => attendee.memberId);
+        setSelectedParticipantIds(memberIds);
+        setCheckedParticipantIds(memberIds);
+        setIsSheetOpen(true);
+        toast({
+          title: "Attended members loaded",
+          description: response.message,
+          variant: "success",
+        });
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast({
+          title: "Unable to load event attendees",
+          description: error instanceof Error ? error.message : "The attendee list could not be loaded.",
+          variant: "error",
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [initialEventId, toast]);
 
   useEffect(() => {
     uploadedLayoutsRef.current = uploadedLayouts;
@@ -159,7 +193,11 @@ export function CertificationsPageContent() {
       const barcodeDataUrl = credentialDocument.barcodeNumber
         ? generateBarcodeDataUrl(credentialDocument.barcodeNumber)
         : null;
-      const nextAssets = { qrCodeDataUrl, barcodeDataUrl };
+      const nextAssets = {
+        documentNumber: credentialDocument.documentNumber,
+        qrCodeDataUrl,
+        barcodeDataUrl,
+      };
 
       credentialAssetsRef.current[member.id] = nextAssets;
       return nextAssets;
@@ -352,26 +390,6 @@ export function CertificationsPageContent() {
     });
   };
 
-  const handlePrepareCertificateBatch = () => {
-    if (isInvalid) {
-      toast({
-        title: "Complete the batch setup",
-        description:
-          "Please check at least one participant and choose an uploaded certificate layout.",
-        variant: "warning",
-      });
-      return;
-    }
-
-    toast({
-      title: "Certificate batch prepared",
-      description: `${checkedParticipants.length} certificate${
-        checkedParticipants.length === 1 ? "" : "s"
-      } are ready using the ${selectedLayout?.name} layout.`,
-      variant: "success",
-    });
-  };
-
   const handleDownloadBatchPdf = async () => {
     if (isInvalid || !selectedLayout) {
       toast({
@@ -386,16 +404,22 @@ export function CertificationsPageContent() {
     try {
       setIsExportingPdf(true);
 
+      const certificateEntries = await Promise.all(
+        checkedParticipants.map(async (member) => ({
+          member,
+          recipientName: buildMemberName(member),
+          credentialAssets: await getCertificateCredentialAssets(member),
+        })),
+      );
+
       const batchPdf = await generateCertificateBatchPdf({
         layoutUrl: selectedLayout.previewUrl,
         namePlacement: selectedLayout.namePlacement,
         codePlacement: selectedLayout.codePlacement,
-        entries: await Promise.all(
-          checkedParticipants.map(async (member) => ({
-            recipientName: buildMemberName(member),
-            ...(await getCertificateCredentialAssets(member)),
-          })),
-        ),
+        entries: certificateEntries.map(({ recipientName, credentialAssets }) => ({
+          recipientName,
+          ...credentialAssets,
+        })),
       });
 
       const objectUrl = window.URL.createObjectURL(batchPdf);
@@ -411,11 +435,52 @@ export function CertificationsPageContent() {
       downloadLink.remove();
       window.URL.revokeObjectURL(objectUrl);
 
+      const issuedAt = new Date().toISOString();
+      const certificateTitle = selectedLayout.name.replace(/\.[^/.]+$/, "").trim();
+
+      for (const { member, recipientName, credentialAssets } of certificateEntries) {
+        const certificatePdf = await generateCertificateBatchPdf({
+          layoutUrl: selectedLayout.previewUrl,
+          namePlacement: selectedLayout.namePlacement,
+          codePlacement: selectedLayout.codePlacement,
+          entries: [
+            {
+              recipientName,
+              ...credentialAssets,
+            },
+          ],
+        });
+        const memberFileLabel = recipientName
+          .replace(/[\\/:*?"<>|]+/g, "-")
+          .replace(/\s+/g, "-")
+          .toLowerCase();
+        const uploaded = await uploadGeneratedMemberCertificate(
+          new File([certificatePdf], `${fileLabel}-${memberFileLabel}.pdf`, {
+            type: "application/pdf",
+          }),
+        );
+        const certificateUrl = uploaded?.ufsUrl ?? uploaded?.url;
+
+        if (!certificateUrl) {
+          throw new Error(`The certificate file for ${recipientName} could not be uploaded.`);
+        }
+
+        await memberApi.createMemberCertificateByAdmin({
+          memberId: member.id,
+          type: "CERTIFICATE",
+          title: certificateTitle || "Certificate",
+          issuer: "Pearl of the Orient International Auxiliary Chaplain Values Educators Inc.",
+          referenceNumber: credentialAssets.documentNumber,
+          certificateUrl,
+          issuedAt,
+        });
+      }
+
       toast({
-        title: "Batch PDF ready",
+        title: "Certificates generated and published",
         description: `Generated ${checkedParticipants.length} certificate page${
           checkedParticipants.length === 1 ? "" : "s"
-        } using your uploaded layout.`,
+        } and added each certificate to its member profile.`,
         variant: "success",
       });
     } catch (error) {
@@ -523,7 +588,6 @@ export function CertificationsPageContent() {
         uploadedLayouts={uploadedLayouts}
         selectedLayoutId={selectedLayoutId}
         onSelectLayout={setSelectedLayoutId}
-        onPrepareBatch={handlePrepareCertificateBatch}
         onDownloadBatch={handleDownloadBatchPdf}
         isInvalid={isInvalid}
         isExportingPdf={isExportingPdf}
