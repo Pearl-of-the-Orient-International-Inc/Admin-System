@@ -4,7 +4,6 @@ import { DocxEditor, type DocxEditorRef } from "@eigenpal/docx-js-editor";
 import "@eigenpal/docx-js-editor/styles.css";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Fragment as ProseMirrorFragment } from "prosemirror-model";
 import type { ChangeEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -755,11 +754,11 @@ export function MemoEditorPageContent() {
         ? view.state.tr.replaceWith(
             placeholderRange.from,
             placeholderRange.to,
-            ProseMirrorFragment.fromArray(signatoryNodes),
+            signatoryNodes,
           )
         : view.state.tr.insert(
             insertPosition,
-            ProseMirrorFragment.fromArray(signatoryNodes),
+            signatoryNodes,
           );
 
     view.dispatch(transaction.scrollIntoView());
