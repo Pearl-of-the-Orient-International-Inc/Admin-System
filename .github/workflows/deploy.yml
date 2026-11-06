@@ -24,13 +24,11 @@ jobs:
           script: |
             sudo -u digipay -H bash -lc '
               set -euo pipefail
-              export BUN_INSTALL="$HOME/.bun"
-              export PATH="$BUN_INSTALL/bin:$PATH"
               cd /var/www/pearl-of-the-orient-admin
               git config --global --add safe.directory /var/www/pearl-of-the-orient-admin
               git fetch origin main
               git reset --hard origin/main
-              bun install --frozen-lockfile
-              bun run build
+              pnpm install --no-frozen-lockfile
+              pnpm build
             '
             pm2 restart pearl-admin-app --update-env
