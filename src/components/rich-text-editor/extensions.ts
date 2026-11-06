@@ -1,7 +1,7 @@
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import { Placeholder } from "@tiptap/extensions/placeholder";
+import { Placeholder } from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import { all, createLowlight } from "lowlight";
 import { Underline } from "@tiptap/extension-underline";
