@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-admin-production
+      cancel-in-progress: false
 
     steps:
       - name: Deploy Admin to VPS
@@ -16,9 +19,18 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 30m
+          script_stop: true
           script: |
-            cd /var/www/pearl-of-the-orient-admin
-            git pull origin main
-            npm install
-            npm run build
+            sudo -u digipay -H bash -lc '
+              set -euo pipefail
+              export BUN_INSTALL="$HOME/.bun"
+              export PATH="$BUN_INSTALL/bin:$PATH"
+              cd /var/www/pearl-of-the-orient-admin
+              git config --global --add safe.directory /var/www/pearl-of-the-orient-admin
+              git fetch origin main
+              git reset --hard origin/main
+              bun install --frozen-lockfile
+              bun run build
+            '
             pm2 restart pearl-admin-app --update-env
