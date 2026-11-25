@@ -656,7 +656,7 @@ export function MemberOfficeAssignmentDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-7xl!">
+        <DialogContent className="max-w-7xl! max-h-[calc(100dvh-2rem)] min-h-[min(44rem,calc(100dvh-2rem))] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Manage Office Assignments</DialogTitle>
             <DialogDescription>
@@ -666,7 +666,7 @@ export function MemberOfficeAssignmentDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+          <div className="grid min-h-0 gap-6 overflow-y-auto pr-1 lg:grid-cols-[1.1fr_1fr]">
             <div className="space-y-4 rounded-xl border bg-muted/20 h-fit p-4">
               <div className="space-y-1">
                 <h3 className="font-medium text-foreground">

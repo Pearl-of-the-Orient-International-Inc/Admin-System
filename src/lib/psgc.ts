@@ -1,4 +1,6 @@
 const PSGC_API_BASE_URL = "https://psgc.gitlab.io/api";
+const NCR_REGION_CODE = "130000000";
+const NCR_METRO_MANILA_CODE = "ncr-metro-manila";
 
 export type PsgcLocation = {
   code: string;
@@ -31,13 +33,29 @@ async function getLocations(path: string): Promise<PsgcLocation[]> {
 
 export const getPsgcRegions = () => getLocations("/regions/");
 
-export const getPsgcProvinces = (regionCode: string) =>
-  getLocations(`/regions/${encodeURIComponent(regionCode)}/provinces/`);
+export const getPsgcProvinces = (regionCode: string) => {
+  // NCR has no provinces in PSGC. Treat Metro Manila as its province-level
+  // selection so province-dependent forms can continue to cities/municipalities.
+  if (regionCode === NCR_REGION_CODE) {
+    return Promise.resolve([
+      { code: NCR_METRO_MANILA_CODE, name: "Metro Manila" },
+    ]);
+  }
 
-export const getPsgcCitiesMunicipalities = (provinceCode: string) =>
-  getLocations(
+  return getLocations(`/regions/${encodeURIComponent(regionCode)}/provinces/`);
+};
+
+export const getPsgcCitiesMunicipalities = (provinceCode: string) => {
+  if (provinceCode === NCR_METRO_MANILA_CODE) {
+    return getLocations(
+      `/regions/${NCR_REGION_CODE}/cities-municipalities/`,
+    );
+  }
+
+  return getLocations(
     `/provinces/${encodeURIComponent(provinceCode)}/cities-municipalities/`,
   );
+};
 
 export const getPsgcBarangays = (cityMunicipalityCode: string) =>
   getLocations(
