@@ -62,6 +62,7 @@ export const NavMain = ({
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     className={cn(
+                      "h-10 rounded-xl group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-11! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:[&>svg]:size-5!",
                       item.isDisabled &&
                         "cursor-not-allowed user-select-none hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground",
                     )}
@@ -103,6 +104,7 @@ export const NavMain = ({
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton
                       className={cn(
+                        "h-10 rounded-xl group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-11! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:[&>svg]:size-5!",
                         item.isDisabled &&
                           "cursor-not-allowed user-select-none hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground",
                       )}

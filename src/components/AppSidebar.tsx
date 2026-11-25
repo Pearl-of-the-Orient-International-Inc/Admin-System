@@ -229,20 +229,21 @@ export const AppSidebar = ({
 }: React.ComponentProps<typeof Sidebar>) => {
   const { state } = useSidebar();
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" className="border-r border-border/70" {...props}>
       <SidebarHeader>
         {state !== "collapsed" ? (
           <HeaderToolbar />
         ) : (
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <a href="/dashboard">
+              <SidebarMenuButton asChild className="mx-auto flex size-11! items-center justify-center p-0! [&>svg]:size-5!">
+                <a href="/dashboard" className="flex size-full items-center justify-center">
                   <Image
                     src="/main/logo.png"
                     alt="Pearl of the Orient"
-                    width={20}
-                    height={20}
+                    width={32}
+                    height={32}
+                    className="size-8 object-contain"
                   />
                 </a>
               </SidebarMenuButton>

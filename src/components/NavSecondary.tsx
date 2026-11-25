@@ -29,7 +29,7 @@ export const NavSecondary = ({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild className="h-10 rounded-xl group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-11! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:[&>svg]:size-5!">
                 <a href={item.url}>
                   <item.icon />
                   <span>{item.title}</span>
