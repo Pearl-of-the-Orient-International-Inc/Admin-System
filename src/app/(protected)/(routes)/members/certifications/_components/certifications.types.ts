@@ -1,3 +1,13 @@
+export type CertificateTextAlign = "left" | "center" | "right";
+
+export type CertificateCustomFont = {
+  id: string;
+  family: string;
+  fileName: string;
+  format: "ttf" | "otf";
+  bytes: ArrayBuffer;
+};
+
 export type CertificateNamePlacement = {
   centerXPercent: number;
   centerYPercent: number;
@@ -5,6 +15,11 @@ export type CertificateNamePlacement = {
   fontSizePercent: number;
   colorHex: string;
   forceUppercase: boolean;
+  fontFamily: string;
+  fontWeight: "normal" | "bold";
+  fontStyle: "normal" | "italic";
+  textAlign: CertificateTextAlign;
+  underline: boolean;
 };
 
 export type CertificateQrPlacement = {

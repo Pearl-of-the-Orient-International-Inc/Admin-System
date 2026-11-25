@@ -15,6 +15,7 @@ import { useMembersQuery } from "@/features/members/member.hooks";
 import { useToast } from "@/hooks/use-toast";
 import { getEventCertificateEligibleAttendees } from "@/features/events/event.api";
 import { generateCertificateBatchPdf } from "@/lib/certificate";
+import { getCertificateFonts, removeCertificateFont, saveCertificateFonts } from "@/lib/certificate-fonts";
 
 import { CertificateBatchSheet } from "./certificate-batch-sheet";
 import { CertificateLayoutPlacementDialog } from "./certificate-layout-placement-dialog";
@@ -22,6 +23,7 @@ import { CertificateLayoutLibrary } from "./certificate-layout-library";
 import { CertificateLayoutUploadCard } from "./certificate-layout-upload-card";
 import type {
   CertificateCodePlacement,
+  CertificateCustomFont,
   CertificateNamePlacement,
   CertificatePreviewItem,
   UploadedCertificateLayout,
@@ -35,6 +37,11 @@ const DEFAULT_NAME_PLACEMENT: CertificateNamePlacement = {
   fontSizePercent: 4.8,
   colorHex: "#034316",
   forceUppercase: true,
+  fontFamily: "times",
+  fontWeight: "bold",
+  fontStyle: "normal",
+  textAlign: "center",
+  underline: false,
 };
 
 const DEFAULT_CODE_PLACEMENT: CertificateCodePlacement = {
@@ -85,6 +92,13 @@ export function CertificationsPageContent({ initialEventId }: { initialEventId?:
   const [editingLayoutId, setEditingLayoutId] = useState<string>("");
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [previewItems, setPreviewItems] = useState<CertificatePreviewItem[]>([]);
+  const [customFonts, setCustomFonts] = useState<CertificateCustomFont[]>([]);
+
+  useEffect(() => {
+    void getCertificateFonts().then(setCustomFonts).catch(() => {
+      toast({ title: "Font library unavailable", description: "Custom fonts could not be loaded from this browser.", variant: "warning" });
+    });
+  }, [toast]);
 
   useEffect(() => {
     if (!initialEventId) return;
@@ -242,6 +256,7 @@ export function CertificationsPageContent({ initialEventId }: { initialEventId?:
             layoutUrl: selectedLayout.previewUrl,
             namePlacement: selectedLayout.namePlacement,
             codePlacement: selectedLayout.codePlacement,
+            customFonts,
             entries: [
               {
                 recipientName: participantName,
@@ -295,6 +310,7 @@ export function CertificationsPageContent({ initialEventId }: { initialEventId?:
     };
   }, [
     checkedParticipants,
+    customFonts,
     getCertificateCredentialAssets,
     isInvalid,
     selectedLayout,
@@ -416,6 +432,7 @@ export function CertificationsPageContent({ initialEventId }: { initialEventId?:
         layoutUrl: selectedLayout.previewUrl,
         namePlacement: selectedLayout.namePlacement,
         codePlacement: selectedLayout.codePlacement,
+        customFonts,
         entries: certificateEntries.map(({ recipientName, credentialAssets }) => ({
           recipientName,
           ...credentialAssets,
@@ -443,6 +460,7 @@ export function CertificationsPageContent({ initialEventId }: { initialEventId?:
           layoutUrl: selectedLayout.previewUrl,
           namePlacement: selectedLayout.namePlacement,
           codePlacement: selectedLayout.codePlacement,
+          customFonts,
           entries: [
             {
               recipientName,
@@ -620,6 +638,24 @@ export function CertificationsPageContent({ initialEventId }: { initialEventId?:
             description: "This layout will now use its own name, QR, and barcode positions.",
             variant: "success",
           });
+        }}
+        customFonts={customFonts}
+        onUploadFonts={async (files) => {
+          const supported = files.filter((file) => /\.(ttf|otf)$/i.test(file.name));
+          if (!supported.length) return;
+          const nextFonts = await Promise.all(supported.map(async (file) => ({
+            id: `font-${file.name}-${file.size}-${file.lastModified}`,
+            family: file.name.replace(/\.(ttf|otf)$/i, ""),
+            fileName: file.name,
+            format: file.name.toLowerCase().endsWith(".otf") ? "otf" as const : "ttf" as const,
+            bytes: await file.arrayBuffer(),
+          })));
+          await saveCertificateFonts(nextFonts);
+          setCustomFonts((current) => [...current.filter((font) => !nextFonts.some((next) => next.id === font.id)), ...nextFonts]);
+        }}
+        onRemoveFont={async (fontId) => {
+          await removeCertificateFont(fontId);
+          setCustomFonts((current) => current.filter((font) => font.id !== fontId));
         }}
       />
     </section>

@@ -9,6 +9,14 @@ import {
   LoaderCircle,
   QrCode,
   RotateCcw,
+  Bold,
+  Italic,
+  Underline,
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Upload,
+  X,
   Type,
 } from "lucide-react";
 
@@ -22,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,6 +38,7 @@ import { generateCertificateBatchPdf } from "@/lib/certificate";
 
 import type {
   CertificateCodePlacement,
+  CertificateCustomFont,
   CertificateNamePlacement,
   UploadedCertificateLayout,
 } from "./certifications.types";
@@ -44,6 +54,9 @@ type Props = {
       codePlacement: CertificateCodePlacement;
     },
   ) => void;
+  customFonts: CertificateCustomFont[];
+  onUploadFonts: (files: File[]) => Promise<void>;
+  onRemoveFont: (fontId: string) => Promise<void>;
 };
 
 const SAMPLE_NAME = "Sample Participant Name";
@@ -57,6 +70,11 @@ const DEFAULT_NAME_PLACEMENT: CertificateNamePlacement = {
   fontSizePercent: 4.8,
   colorHex: "#034316",
   forceUppercase: true,
+  fontFamily: "times",
+  fontWeight: "bold",
+  fontStyle: "normal",
+  textAlign: "center",
+  underline: false,
 };
 
 const DEFAULT_CODE_PLACEMENT: CertificateCodePlacement = {
@@ -84,6 +102,9 @@ export function CertificateLayoutPlacementDialog({
   open,
   onOpenChange,
   onSave,
+  customFonts,
+  onUploadFonts,
+  onRemoveFont,
 }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [activeTarget, setActiveTarget] = useState<"name" | "qr" | "barcode">("name");
@@ -98,10 +119,12 @@ export function CertificateLayoutPlacementDialog({
   const [isRenderingPreview, setIsRenderingPreview] = useState(false);
   const [sampleQrCodeDataUrl, setSampleQrCodeDataUrl] = useState<string | null>(null);
   const [sampleBarcodeDataUrl, setSampleBarcodeDataUrl] = useState<string | null>(null);
+  const fontInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingFonts, setIsUploadingFonts] = useState(false);
 
   useEffect(() => {
     if (layout) {
-      setDraftName(layout.namePlacement);
+      setDraftName({ ...DEFAULT_NAME_PLACEMENT, ...layout.namePlacement });
       setDraftCodes(layout.codePlacement);
     }
   }, [layout]);
@@ -349,6 +372,48 @@ export function CertificateLayoutPlacementDialog({
 
               {activeTarget === "name" ? (
                 <>
+                  <div className="space-y-3 rounded-2xl border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label>Font</Label>
+                      <input
+                        ref={fontInputRef}
+                        type="file"
+                        accept=".ttf,.otf,font/ttf,font/otf"
+                        multiple
+                        className="hidden"
+                        onChange={async (event) => {
+                          const files = Array.from(event.target.files ?? []);
+                          if (!files.length) return;
+                          setIsUploadingFonts(true);
+                          try { await onUploadFonts(files); } finally { setIsUploadingFonts(false); event.target.value = ""; }
+                        }}
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={() => fontInputRef.current?.click()} disabled={isUploadingFonts}>
+                        <Upload className="size-4" />{isUploadingFonts ? "Uploading" : "Upload font"}
+                      </Button>
+                    </div>
+                    <Select value={draftName.fontFamily} onValueChange={(fontFamily) => updateDraftName({ fontFamily })}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Choose a font" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="times">Times New Roman</SelectItem>
+                        <SelectItem value="helvetica">Helvetica</SelectItem>
+                        <SelectItem value="courier">Courier New</SelectItem>
+                        {customFonts.length ? customFonts.map((font) => <SelectItem key={font.id} value={font.id}>{font.family} · {font.format.toUpperCase()}</SelectItem>) : null}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select value={String(Math.round(draftName.fontSizePercent * 10))} onValueChange={(value) => updateDraftName({ fontSizePercent: Number(value) / 10 })}>
+                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                        <SelectContent>{[18, 24, 30, 36, 42, 48, 60, 72, 84, 96].map((size) => <SelectItem key={size} value={String(size)}>{size / 10}%</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Button type="button" size="icon-sm" variant={draftName.fontWeight === "bold" ? "secondary" : "outline"} onClick={() => updateDraftName({ fontWeight: draftName.fontWeight === "bold" ? "normal" : "bold" })} aria-label="Bold"><Bold className="size-4" /></Button>
+                      <Button type="button" size="icon-sm" variant={draftName.fontStyle === "italic" ? "secondary" : "outline"} onClick={() => updateDraftName({ fontStyle: draftName.fontStyle === "italic" ? "normal" : "italic" })} aria-label="Italic"><Italic className="size-4" /></Button>
+                      <Button type="button" size="icon-sm" variant={draftName.underline ? "secondary" : "outline"} onClick={() => updateDraftName({ underline: !draftName.underline })} aria-label="Underline"><Underline className="size-4" /></Button>
+                      <span className="mx-1 h-6 border-l" />
+                      {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([align, Icon]) => <Button key={align} type="button" size="icon-sm" variant={draftName.textAlign === align ? "secondary" : "outline"} onClick={() => updateDraftName({ textAlign: align })} aria-label={`Align ${align}`}><Icon className="size-4" /></Button>)}
+                    </div>
+                    {customFonts.length ? <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">{customFonts.map((font) => <span key={font.id} className="inline-flex items-center gap-1 rounded-full border px-2 py-1">{font.family}<button type="button" onClick={() => void onRemoveFont(font.id)} aria-label={`Remove ${font.family}`}><X className="size-3" /></button></span>)}</div> : <p className="text-xs text-muted-foreground">Custom .ttf and .otf fonts are saved in this browser’s certificate font library.</p>}
+                  </div>
                   <div className="space-y-4">
                     <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">

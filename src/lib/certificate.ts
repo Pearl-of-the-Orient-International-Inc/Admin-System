@@ -1,4 +1,6 @@
+import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, type PDFFont, type PDFPage, StandardFonts, rgb } from "pdf-lib";
+import type { CertificateCustomFont, CertificateTextAlign } from "@/app/(protected)/(routes)/members/certifications/_components/certifications.types";
 
 type CertificateNamePlacement = {
   centerXPercent: number;
@@ -7,6 +9,11 @@ type CertificateNamePlacement = {
   fontSizePercent: number;
   colorHex: string;
   forceUppercase: boolean;
+  fontFamily: string;
+  fontWeight: "normal" | "bold";
+  fontStyle: "normal" | "italic";
+  textAlign: CertificateTextAlign;
+  underline: boolean;
 };
 
 type CertificateCodePlacement = {
@@ -36,6 +43,7 @@ type GenerateCertificateBatchPdfInput = {
   entries: CertificateBatchEntry[];
   namePlacement?: CertificateNamePlacement;
   codePlacement?: CertificateCodePlacement;
+  customFonts?: CertificateCustomFont[];
 };
 
 const DEFAULT_NAME_PLACEMENT: CertificateNamePlacement = {
@@ -45,6 +53,11 @@ const DEFAULT_NAME_PLACEMENT: CertificateNamePlacement = {
   fontSizePercent: 4.8,
   colorHex: "#034316",
   forceUppercase: true,
+  fontFamily: "times",
+  fontWeight: "bold",
+  fontStyle: "normal",
+  textAlign: "center",
+  underline: false,
 };
 
 const DEFAULT_CODE_PLACEMENT: CertificateCodePlacement = {
@@ -123,7 +136,7 @@ function fitTextSizeToWidth(params: {
   return nextSize;
 }
 
-function drawCenteredText(params: {
+function drawText(params: {
   pageCenterX: number;
   page: PDFPage;
   text: string;
@@ -131,17 +144,42 @@ function drawCenteredText(params: {
   size: number;
   font: PDFFont;
   color: ReturnType<typeof rgb>;
+  align: CertificateTextAlign;
+  maxWidth: number;
+  underline: boolean;
 }) {
-  const { pageCenterX, page, text, y, size, font, color } = params;
+  const { pageCenterX, page, text, y, size, font, color, align, maxWidth, underline } = params;
   const textWidth = font.widthOfTextAtSize(text, size);
+  const x = align === "left" ? pageCenterX - maxWidth / 2 : align === "right" ? pageCenterX + maxWidth / 2 - textWidth : pageCenterX - textWidth / 2;
 
   page.drawText(text, {
-    x: pageCenterX - textWidth / 2,
+    x,
     y,
     size,
     font,
     color,
   });
+
+  if (underline) {
+    page.drawLine({ start: { x, y: y - size * 0.12 }, end: { x: x + textWidth, y: y - size * 0.12 }, thickness: Math.max(0.7, size * 0.05), color });
+  }
+}
+
+async function resolveCertificateFont(doc: PDFDocument, placement: CertificateNamePlacement, customFonts: CertificateCustomFont[]) {
+  const customFont = customFonts.find((font) => font.id === placement.fontFamily);
+  if (customFont) {
+    doc.registerFontkit(fontkit);
+    return doc.embedFont(customFont.bytes);
+  }
+
+  const isBold = placement.fontWeight === "bold";
+  const isItalic = placement.fontStyle === "italic";
+  const families = placement.fontFamily === "helvetica"
+    ? [StandardFonts.Helvetica, StandardFonts.HelveticaBold, StandardFonts.HelveticaOblique, StandardFonts.HelveticaBoldOblique]
+    : placement.fontFamily === "courier"
+      ? [StandardFonts.Courier, StandardFonts.CourierBold, StandardFonts.CourierOblique, StandardFonts.CourierBoldOblique]
+      : [StandardFonts.TimesRoman, StandardFonts.TimesRomanBold, StandardFonts.TimesRomanItalic, StandardFonts.TimesRomanBoldItalic];
+  return doc.embedFont(families[isBold ? (isItalic ? 3 : 1) : (isItalic ? 2 : 0)]);
 }
 
 export async function generateCertificateBatchPdf({
@@ -149,6 +187,7 @@ export async function generateCertificateBatchPdf({
   entries,
   namePlacement = DEFAULT_NAME_PLACEMENT,
   codePlacement = DEFAULT_CODE_PLACEMENT,
+  customFonts = [],
 }: GenerateCertificateBatchPdfInput): Promise<Blob> {
   const templateBytes = await fetchAsBytes(layoutUrl);
   const batchDoc = await PDFDocument.create();
@@ -156,7 +195,7 @@ export async function generateCertificateBatchPdf({
 
   for (const entry of entries) {
     const templateDoc = await PDFDocument.load(templateBytes.slice());
-    const serifBold = await templateDoc.embedFont(StandardFonts.TimesRomanBold);
+    const certificateFont = await resolveCertificateFont(templateDoc, namePlacement, customFonts);
     const page = templateDoc.getPages()[0];
     const pageWidth = page.getWidth();
     const pageHeight = page.getHeight();
@@ -167,25 +206,28 @@ export async function generateCertificateBatchPdf({
       : entry.recipientName.trim();
     const recipientNameSize = fitTextSizeToWidth({
       text: recipientName,
-      font: serifBold,
+      font: certificateFont,
       maxSize: shortestSide * clamp(namePlacement.fontSizePercent, 1.5, 12) / 100,
       minSize: shortestSide * 0.025,
       maxWidth: pageWidth * clamp(namePlacement.maxWidthPercent, 10, 95) / 100,
     });
-    const recipientNameHeight = serifBold.heightAtSize(recipientNameSize);
+    const recipientNameHeight = certificateFont.heightAtSize(recipientNameSize);
     const recipientCenterYFromTop =
       pageHeight * clamp(namePlacement.centerYPercent, 0, 100) / 100;
     const recipientBaselineY =
       pageHeight - recipientCenterYFromTop - recipientNameHeight / 2;
 
-    drawCenteredText({
+    drawText({
       pageCenterX,
       page,
       text: recipientName,
       y: recipientBaselineY,
       size: recipientNameSize,
-      font: serifBold,
+      font: certificateFont,
       color: accent,
+      align: namePlacement.textAlign,
+      maxWidth: pageWidth * clamp(namePlacement.maxWidthPercent, 10, 95) / 100,
+      underline: namePlacement.underline,
     });
 
     if (codePlacement.qr.enabled && entry.qrCodeDataUrl) {

@@ -16,6 +16,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,8 @@ export const NavMain = ({
   }[];
 }) => {
   const pathname = usePathname();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   const isPathActive = (url: string) =>
     pathname === url || pathname.startsWith(`${url}/`);
@@ -72,8 +75,8 @@ export const NavMain = ({
                   >
                     <a href={item.url}>
                       {item.icon && <item.icon />}
-                      <span>{item.title}</span>
-                      {item.isDisabled && (
+                      {!isCollapsed ? <span>{item.title}</span> : null}
+                      {!isCollapsed && item.isDisabled && (
                         <Badge
                           className="text-[10px] px-1 font-semibold font-mono text-foreground"
                           variant="secondary"
@@ -81,7 +84,7 @@ export const NavMain = ({
                           Coming Soon
                         </Badge>
                       )}
-                      {item.isNew && (
+                      {!isCollapsed && item.isNew && (
                         <span className="bg-linear-to-r from-red-500 to-red-800 text-white px-1.5 py-0.5 text-[9px] font-semibold rounded-[10px_2px_10px_2px]">
                           New
                         </span>
@@ -112,8 +115,8 @@ export const NavMain = ({
                       isActive={Boolean(hasActiveSubItem)}
                     >
                       {item.icon && <item.icon />}
-                      <span>{item.title}</span>
-                      {item.isDisabled && (
+                      {!isCollapsed ? <span>{item.title}</span> : null}
+                      {!isCollapsed && item.isDisabled && (
                         <Badge
                           className="text-[10px] px-1 font-semibold font-mono text-foreground"
                           variant="secondary"
@@ -121,15 +124,15 @@ export const NavMain = ({
                           Coming Soon
                         </Badge>
                       )}
-                      {item.isNew && (
+                      {!isCollapsed && item.isNew && (
                         <span className="bg-linear-to-r from-green-500 to-green-800 text-white px-1.5 py-0.5 text-[9px] font-semibold rounded-[10px_2px_10px_2px]">
                           New
                         </span>
                       )}
-                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      {!isCollapsed ? <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" /> : null}
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
-                  <CollapsibleContent>
+                  {!isCollapsed ? <CollapsibleContent>
                     <SidebarMenuSub>
                       {item.subItems?.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
@@ -161,7 +164,7 @@ export const NavMain = ({
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>
-                  </CollapsibleContent>
+                  </CollapsibleContent> : null}
                 </SidebarMenuItem>
               </Collapsible>
             );
