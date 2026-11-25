@@ -20,6 +20,7 @@ import {
   LockKeyhole,
   Mail,
   MailCheck,
+  FileUp,
   Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -97,6 +98,7 @@ type MembersDataTableProps = {
   onViewDetails: (member: MemberRecord) => void;
   onEditDetails: (member: MemberRecord) => void;
   onAssignOffice: (member: MemberRecord) => void;
+  onUploadCertificate?: (member: MemberRecord) => void;
   onRequestToggleMemberArchiveState: (member: MemberRecord) => void;
   onGenerateBarcode?: (member: MemberRecord) => void;
   onGenerateQrCode: (member: MemberRecord) => void;
@@ -147,6 +149,7 @@ export function MembersDataTable({
   onViewDetails,
   onEditDetails,
   onAssignOffice,
+  onUploadCertificate,
   onRequestToggleMemberArchiveState,
   onGenerateBarcode,
   onGenerateQrCode,
@@ -519,6 +522,15 @@ export function MembersDataTable({
               <BriefcaseBusiness className="size-4" />
               Manage offices
             </DropdownMenuItem>
+            {onUploadCertificate ? (
+              <DropdownMenuItem
+                onClick={() => onUploadCertificate(row.original)}
+                disabled={row.original.status === "Archived"}
+              >
+                <FileUp className="size-4" />
+                Upload certificate
+              </DropdownMenuItem>
+            ) : null}
             {onGenerateBarcode ? (
               <DropdownMenuItem onClick={() => onGenerateBarcode(row.original)}>
                 <Barcode className="size-4" />

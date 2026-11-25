@@ -21,6 +21,7 @@ import {
   LayoutGrid,
   LoaderCircle,
   MoreHorizontal,
+  FileUp,
   Plus,
   QrCode,
   RotateCcw,
@@ -79,6 +80,7 @@ import { MemberOfficeAssignmentDialog } from "./member-office-assignment-dialog"
 import { MemberDetailsSheet } from "./member-details-sheet";
 import { MemberBarcodeDialog } from "./member-barcode-dialog";
 import { MemberQrCodeDialog } from "./member-qr-code-dialog";
+import { MemberCertificateUploadDialog } from "./member-certificate-upload-dialog";
 import {
   branchOfServiceOptions,
   mapMemberToRecord,
@@ -127,6 +129,8 @@ export function MembersPageContent() {
     null,
   );
   const [barcodeDialogMember, setBarcodeDialogMember] =
+    useState<MemberRecord | null>(null);
+  const [certificateUploadMember, setCertificateUploadMember] =
     useState<MemberRecord | null>(null);
   const [detailsMemberId, setDetailsMemberId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -598,6 +602,10 @@ export function MembersPageContent() {
 
   const handleAssignOffice = (member: MemberRecord) => {
     setOfficeAssignmentMember(member);
+  };
+
+  const handleUploadCertificate = (member: MemberRecord) => {
+    setCertificateUploadMember(member);
   };
 
   const handleSuspendMember = async (member: MemberRecord) => {
@@ -1138,6 +1146,7 @@ export function MembersPageContent() {
                         onViewDetails={handleViewDetails}
                         onEditDetails={handleEditDetails}
                         onAssignOffice={handleAssignOffice}
+                        onUploadCertificate={handleUploadCertificate}
                         onRequestToggleMemberArchiveState={handleSuspendMember}
                         onGenerateQrCode={handleGenerateQrCode}
                       />
@@ -1166,6 +1175,7 @@ export function MembersPageContent() {
                         onViewDetails={handleViewDetails}
                         onEditDetails={handleEditDetails}
                         onAssignOffice={handleAssignOffice}
+                        onUploadCertificate={handleUploadCertificate}
                         onRequestToggleMemberArchiveState={handleSuspendMember}
                         onGenerateBarcode={handleGenerateBarcode}
                         onGenerateQrCode={handleGenerateQrCode}
@@ -1205,6 +1215,16 @@ export function MembersPageContent() {
         onOpenChange={(open) => {
           if (!open) {
             setQrDialogMember(null);
+          }
+        }}
+      />
+
+      <MemberCertificateUploadDialog
+        member={certificateUploadMember}
+        open={Boolean(certificateUploadMember)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCertificateUploadMember(null);
           }
         }}
       />
@@ -1309,6 +1329,7 @@ function MembersGridView({
   onViewDetails,
   onEditDetails,
   onAssignOffice,
+  onUploadCertificate,
   onRequestToggleMemberArchiveState,
   onGenerateQrCode,
 }: {
@@ -1318,6 +1339,7 @@ function MembersGridView({
   onViewDetails: (member: MemberRecord) => void;
   onEditDetails: (member: MemberRecord) => void;
   onAssignOffice: (member: MemberRecord) => void;
+  onUploadCertificate: (member: MemberRecord) => void;
   onRequestToggleMemberArchiveState: (member: MemberRecord) => void;
   onGenerateQrCode: (member: MemberRecord) => void;
 }) {
@@ -1374,6 +1396,13 @@ function MembersGridView({
                   >
                     <BriefcaseBusiness className="size-4" />
                     Manage offices
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onUploadCertificate(member)}
+                    disabled={member.status === "Archived"}
+                  >
+                    <FileUp className="size-4" />
+                    Upload certificate
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
