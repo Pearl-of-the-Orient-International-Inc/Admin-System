@@ -221,6 +221,7 @@ export function CertificateLayoutPlacementDialog({
           layoutUrl: layout.previewUrl,
           namePlacement: draftName,
           codePlacement: draftCodes,
+          customFonts,
           entries: [
             {
               recipientName: SAMPLE_NAME,
@@ -252,7 +253,7 @@ export function CertificateLayoutPlacementDialog({
       isActive = false;
       window.clearTimeout(timeoutId);
     };
-  }, [draftCodes, draftName, layout, open, sampleBarcodeDataUrl, sampleQrCodeDataUrl]);
+  }, [customFonts, draftCodes, draftName, layout, open, sampleBarcodeDataUrl, sampleQrCodeDataUrl]);
 
   useEffect(() => {
     return () => {
