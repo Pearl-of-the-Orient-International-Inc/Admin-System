@@ -175,19 +175,19 @@ export function MemberCertificateUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto max-w-3xl!">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-3xl! max-h-[calc(100vh-2rem)] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload member certificate</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="break-words">
             Attach a completed, externally-created certificate PDF to{" "}
             <span className="font-medium text-foreground">{member?.fullName ?? "this member"}</span>.
             It will appear with system-generated certificates in the member&apos;s digital records.
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
+        <form className="min-w-0 space-y-5" onSubmit={handleSubmit}>
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2 sm:col-span-2">
               <Label htmlFor="certificate-title">Certificate title</Label>
               <Input
                 id="certificate-title"
@@ -199,7 +199,7 @@ export function MemberCertificateUploadDialog({
                 required
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label>Category</Label>
               <Select
                 value={type}
@@ -217,7 +217,7 @@ export function MemberCertificateUploadDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="certificate-reference">Reference number</Label>
               <Input
                 id="certificate-reference"
@@ -229,7 +229,7 @@ export function MemberCertificateUploadDialog({
                 required
               />
             </div>
-            <div className="space-y-2 sm:col-span-2">
+            <div className="min-w-0 space-y-2 sm:col-span-2">
               <Label htmlFor="certificate-issuer">Issuer</Label>
               <Input
                 id="certificate-issuer"
@@ -240,7 +240,7 @@ export function MemberCertificateUploadDialog({
                 required
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="certificate-issued-at">Date issued</Label>
               <Input
                 id="certificate-issued-at"
@@ -251,7 +251,7 @@ export function MemberCertificateUploadDialog({
                 required
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="certificate-expires-at">Expiration date (optional)</Label>
               <Input
                 id="certificate-expires-at"
@@ -264,14 +264,14 @@ export function MemberCertificateUploadDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor={fileInputId}>Completed certificate PDF</Label>
             <label
               htmlFor={fileInputId}
               className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/30 px-5 py-7 text-center transition-colors hover:bg-muted/60"
             >
               <FileUp className="size-6 text-primary" />
-              <span className="font-medium">{file?.name ?? "Choose certificate PDF"}</span>
+              <span className="max-w-full truncate font-medium">{file?.name ?? "Choose certificate PDF"}</span>
               <span className="text-muted-foreground text-sm">PDF only, up to 16 MB</span>
             </label>
             <Input
@@ -284,7 +284,7 @@ export function MemberCertificateUploadDialog({
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-wrap">
             <Button type="button" variant="outline" onClick={close} disabled={isUploading}>
               Cancel
             </Button>
