@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import { MemberType } from "@/enums";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +14,8 @@ import {
 import { Field } from "../Field";
 import type { ApplicationFormState, LocationCatalog } from "../types";
 import { sanitizeMobileNumber } from "../utils";
+import { uploadMemberIdPhoto } from "@/features/members/member-photo-upload.api";
+import { useToast } from "@/hooks/use-toast";
 
 type LocationSelection = {
   regionId: number | null;
@@ -204,6 +207,9 @@ export function StepPersonalDetails({
   emailMode?: "editable" | "locked";
   emailHelperText?: string;
 }) {
+  const { toast } = useToast();
+  const photoInputId = useId();
+  const [isPhotoUploading, setIsPhotoUploading] = useState(false);
   const regions = useMemo(
     () => locationCatalog.getRegions(),
     [locationCatalog],
@@ -252,8 +258,93 @@ export function StepPersonalDetails({
 
   const today = new Date().toISOString().split("T")[0];
 
+  const handlePhotoChange = async (file: File | undefined) => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      toast({
+        variant: "error",
+        title: "Unsupported picture format",
+        description: "Use a JPG, JPEG, or PNG file for the 2x2 ID picture.",
+      });
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast({
+        variant: "error",
+        title: "Picture is too large",
+        description: "The 2x2 ID picture must be 4 MB or smaller.",
+      });
+      return;
+    }
+
+    try {
+      setIsPhotoUploading(true);
+      const uploaded = await uploadMemberIdPhoto(file);
+      const photoUrl = uploaded?.ufsUrl ?? uploaded?.url;
+      if (!photoUrl) throw new Error("The picture upload did not return a file URL.");
+      updateFieldAction("photoUrl", photoUrl);
+      toast({
+        variant: "success",
+        title: "2x2 ID picture uploaded",
+        description: "This image will be used for the member profile and physical ID.",
+      });
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Picture upload failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Please try uploading the 2x2 ID picture again.",
+      });
+    } finally {
+      setIsPhotoUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      <Field
+        label="2x2 ID picture"
+        required
+        hint="Use a clear recent JPG, JPEG, or PNG portrait. This picture is saved to the member profile and used for physical ID preparation."
+      >
+        <div className="flex flex-col gap-4 rounded-lg border border-dashed bg-muted/30 p-4 sm:flex-row sm:items-center">
+          <div className="h-32 w-32 shrink-0 overflow-hidden rounded-md border bg-background">
+            {form.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.photoUrl} alt="2x2 ID picture preview" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center text-xs text-muted-foreground">
+                <ImagePlus className="size-6 text-primary" />
+                <span>2x2 preview</span>
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">
+              {form.photoUrl ? "ID picture ready" : "Upload the member's 2x2 ID picture"}
+            </p>
+            <p className="text-xs leading-5 text-muted-foreground">
+              JPG, JPEG, or PNG only, up to 4 MB. Use a clear front-facing portrait for physical ID printing.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <label htmlFor={photoInputId} className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                {isPhotoUploading ? <LoaderCircle className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+                {isPhotoUploading ? "Uploading..." : form.photoUrl ? "Replace picture" : "Choose picture"}
+              </label>
+              {form.photoUrl ? (
+                <button type="button" onClick={() => updateFieldAction("photoUrl", "")} disabled={isPhotoUploading} className="inline-flex h-9 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors hover:bg-muted">
+                  <X className="size-4" />
+                  Remove
+                </button>
+              ) : null}
+            </div>
+            <Input id={photoInputId} type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" className="sr-only" disabled={isPhotoUploading} onChange={(event) => { void handlePhotoChange(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+          </div>
+        </div>
+      </Field>
+
       <Field label="Member type" required>
         <div className="space-y-1.5">
           <Select

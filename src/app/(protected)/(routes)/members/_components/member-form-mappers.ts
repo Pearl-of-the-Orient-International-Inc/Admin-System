@@ -112,6 +112,9 @@ export const mapFormToMemberPayload = (
   if (!form.firstName.trim() || !form.lastName.trim()) {
     throw new Error("Please enter the member's first and last name.");
   }
+  if (!form.photoUrl.trim()) {
+    throw new Error("Please upload the member's 2x2 ID picture.");
+  }
 
   if (!form.gender) {
     throw new Error("Please select the member's gender.");
@@ -166,6 +169,7 @@ export const mapFormToMemberPayload = (
     extensionName: getOptional(form.extensionName),
     memberType: form.memberType,
     badgeNumber: getOptional(form.badgeNumber),
+    photoUrl: form.photoUrl.trim(),
     mobilePhoneNumber: getOptional(form.phoneNumber),
     homeAddress: getOptional(form.address),
     civilStatus: form.civilStatus ? CIVIL_STATUS_MAP[form.civilStatus] : undefined,
@@ -343,7 +347,7 @@ export const mapMemberToFormState = (member: AdminMember): ApplicationFormState 
       characterReferences.length > 0
         ? characterReferences
         : [{ name: "", position: "", contactNumber: "" }],
-    photoUrl: "",
+    photoUrl: member.user.avatar ?? "",
     signatureUrl: member.signature?.signatureData ?? "",
     declarationTruthConfirmed: false,
     monthlyPledgeConfirmed: false,

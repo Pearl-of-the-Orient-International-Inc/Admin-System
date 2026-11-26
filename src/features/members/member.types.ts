@@ -8,6 +8,7 @@ export type CreateMemberByAdminRequest = {
   extensionName?: string;
   memberType?: MemberType;
   badgeNumber?: string;
+  photoUrl?: string;
   profileBannerUrl?: string;
   mobilePhoneNumber?: string;
   homeAddress?: string;
