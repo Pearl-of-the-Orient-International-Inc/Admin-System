@@ -120,6 +120,19 @@ export function StepReferencesReview({
           hint="Use your mouse, trackpad, or finger to sign inside the box."
         >
           <div className="mt-1 space-y-3">
+            {form.signatureUrl ? (
+              <div className="max-w-105 overflow-hidden rounded-md border border-primary/20 bg-white p-2">
+                <p className="mb-2 text-xs font-medium text-foreground">
+                  Submitted digital signature
+                </p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={form.signatureUrl}
+                  alt="Submitted applicant signature"
+                  className="h-auto max-h-45 w-full object-contain"
+                />
+              </div>
+            ) : null}
             <div className="inline-flex rounded-md border border-primary/20 p-1">
               <button
                 type="button"

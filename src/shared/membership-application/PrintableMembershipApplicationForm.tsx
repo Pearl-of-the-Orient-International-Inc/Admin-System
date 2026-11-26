@@ -289,7 +289,16 @@ export function PrintableMembershipApplicationForm({
             <div className="grid gap-4 pt-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
               <div>
                 <p className="text-sm font-medium">Applicant&apos;s signature</p>
-                <div className="mt-2 h-36 border border-black" />
+                <div className="mt-2 flex h-36 items-center justify-center border border-black bg-white p-2">
+                  {form.signatureUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={form.signatureUrl}
+                      alt="Applicant signature"
+                      className="h-full max-w-full object-contain"
+                    />
+                  ) : null}
+                </div>
                 <p className="mt-2 border-t border-black pt-1 text-xs uppercase tracking-[0.14em]">
                   Signature over printed name
                 </p>
