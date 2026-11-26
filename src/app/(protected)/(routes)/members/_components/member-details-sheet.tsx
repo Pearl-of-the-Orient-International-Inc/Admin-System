@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ExternalLink,
   FileText,
+  ImageIcon,
   LoaderCircle,
   Link2,
   Mail,
@@ -100,6 +101,10 @@ export function MemberDetailsSheet({
                     </Badge>
                     <Badge className="border-white/20 bg-white/10 text-white hover:bg-white/10">
                       Applied {formatDate(data.createdAt)}
+                    </Badge>
+                    <Badge className="gap-1 border-white/20 bg-white/10 text-white hover:bg-white/10">
+                      <ImageIcon className="size-3" />
+                      {data.user.avatar ? "2x2 ID photo on file" : "No 2x2 ID photo"}
                     </Badge>
                   </div>
                 </div>

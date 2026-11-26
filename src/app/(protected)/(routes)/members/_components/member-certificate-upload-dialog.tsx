@@ -175,7 +175,7 @@ export function MemberCertificateUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto max-w-3xl!">
         <DialogHeader>
           <DialogTitle>Upload member certificate</DialogTitle>
           <DialogDescription>
@@ -208,7 +208,7 @@ export function MemberCertificateUploadDialog({
                 }
                 disabled={isUploading}
               >
-                <SelectTrigger aria-label="Certificate category">
+                <SelectTrigger className="w-full" aria-label="Certificate category">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
