@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Info, LoaderCircle, Printer } from "lucide-react";
 
 import { MembershipApplicationForm } from "@/shared/membership-application/MembershipApplicationForm";
+import { PrintableMembershipApplicationForm } from "@/shared/membership-application/PrintableMembershipApplicationForm";
 import { getBarangays } from "@/constants/barangay";
 import { getMunicipalities } from "@/constants/municipality";
 import { getProvinces } from "@/constants/province";
@@ -54,37 +55,22 @@ export default function AdminMemberFormPage() {
   } = useMemberByIdQuery(routeMemberId, !isCreateMode);
 
   const handlePrintForm = () => {
-    try {
-      const printWindow = window.open(
-        "/print-templates/Membership_Application_Form.pdf",
-        "_blank",
-        "noopener,noreferrer",
-      );
-
-      if (!printWindow) {
-        throw new Error("Please allow pop-ups to print the application form.");
-      }
-
-      window.setTimeout(() => {
-        try {
-          printWindow.focus();
-          printWindow.print();
-        } catch {
-          // If the browser PDF viewer does not allow programmatic printing,
-          // opening the PDF tab is still a valid fallback for manual printing.
-        }
-      }, 800);
-    } catch (error) {
+    if (!existingMember) {
       toast({
-        title: "PDF print failed",
+        title: "Save the member first",
         description:
-          error instanceof Error
-            ? error.message
-            : "Unable to print the membership application form right now.",
+          "A membership application record must exist before it can be printed.",
         variant: "error",
       });
+      return;
     }
+
+    window.setTimeout(() => window.print(), 0);
   };
+
+  const printableForm = existingMember
+    ? mapMemberToFormState(existingMember)
+    : null;
 
   const handleSubmit = async (form: ApplicationFormState) => {
     const payload = mapFormToMemberPayload(form);
@@ -274,6 +260,39 @@ export default function AdminMemberFormPage() {
           </CardContent>
         </Card>
       </div>
+
+      {printableForm ? (
+        <div id="member-application-print">
+          <PrintableMembershipApplicationForm
+            form={printableForm}
+            headerImageSrc="/main/logo.png"
+          />
+        </div>
+      ) : null}
+
+      <style jsx global>{`
+        #member-application-print {
+          display: none;
+        }
+
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+
+          #member-application-print,
+          #member-application-print * {
+            visibility: visible;
+          }
+
+          #member-application-print {
+            display: block !important;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+          }
+        }
+      `}</style>
     </section>
   );
 }
